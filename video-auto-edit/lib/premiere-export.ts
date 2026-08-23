@@ -43,44 +43,26 @@ function toRationalTime(sec: number, fps: number): string {
 /**
  * カット後タイムラインを Final Cut Pro XML (FCPXML 1.10) として書き出す。
  * Premiere Pro は FCPXML の公式importに対応している（design doc §4）。
- * 映像/音声はカット済み区間ごとの asset-clip として、キャプションは各クリップに接続した title として出力する。
+ * 映像/音声はカット済み区間ごとの asset-clip として出力する。
+ *
+ * キャプションは意図的にFCPXMLへ埋め込まない: FCPXMLの<title>はFinal Cut Pro/Motion付属の
+ * テンプレート(.moti)への有効な参照(uid)が無いと「サポートされていないファイル形式」として
+ * インポート全体が拒否される。Premiereでは持っていない/解決できないテンプレートのため、
+ * 代わりに generateSrt() の出力を単独でインポートしてもらう（Premiereのネイティブ字幕トラックとして
+ * 認識される、より確実な方法）。
  */
-export function generateFcpxml(video: FcpxmlVideoInfo, clips: FcpxmlClip[], captions: FcpxmlCaption[] = []): string {
+export function generateFcpxml(video: FcpxmlVideoInfo, clips: FcpxmlClip[]): string {
   const fps = Math.max(1, Math.round(video.fps));
   const t = (sec: number) => toRationalTime(sec, fps);
   const fileUrl = toFileUrl(video.absolutePath);
 
-  let titleCounter = 0;
   const assetClipsXml = clips
     .map((clip, i) => {
       const clipDuration = t(clip.sourceEnd - clip.sourceStart);
       const clipStart = t(clip.sourceStart);
       const clipOffset = t(clip.timelineStart);
 
-      const clipCaptions = captions.filter(
-        (c) => c.timelineStart >= clip.timelineStart && c.timelineStart < clip.timelineEnd
-      );
-
-      const titlesXml = clipCaptions
-        .map((c) => {
-          titleCounter += 1;
-          const styleId = `ts${titleCounter}`;
-          const titleOffset = t(Math.max(0, c.timelineStart - clip.timelineStart));
-          const titleDuration = t(Math.max(1 / fps, c.timelineEnd - c.timelineStart));
-          return `          <title name="caption" ref="r3" offset="${titleOffset}" duration="${titleDuration}">
-            <text>
-              <text-style ref="${styleId}">${escapeXml(c.text)}</text-style>
-            </text>
-            <text-style-def id="${styleId}">
-              <text-style font="Helvetica" fontSize="48" alignment="center"/>
-            </text-style-def>
-          </title>`;
-        })
-        .join("\n");
-
-      return `        <asset-clip name="${escapeXml(video.filename)}-${i + 1}" ref="r2" offset="${clipOffset}" duration="${clipDuration}" start="${clipStart}" format="r1" tcFormat="NDF">
-${titlesXml}
-        </asset-clip>`;
+      return `        <asset-clip name="${escapeXml(video.filename)}-${i + 1}" ref="r2" offset="${clipOffset}" duration="${clipDuration}" start="${clipStart}" format="r1" tcFormat="NDF"/>`;
     })
     .join("\n");
 
@@ -95,7 +77,6 @@ ${titlesXml}
     <asset id="r2" name="${escapeXml(video.filename)}" start="0s" duration="${assetDuration}" hasVideo="1" hasAudio="1" format="r1">
       <media-rep kind="original-media" src="${escapeXml(fileUrl)}"/>
     </asset>
-    <effect id="r3" name="Basic Title" uid=".../Titles.localized/Bumper:Opener.localized/Basic Title.localized/Basic Title.moti"/>
   </resources>
   <library>
     <event name="AI Auto Edit">

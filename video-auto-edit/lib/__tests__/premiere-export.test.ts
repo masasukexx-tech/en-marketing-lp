@@ -18,7 +18,7 @@ test("generateFcpxml embeds one asset-clip per timeline clip with frame-accurate
     { sourceStart: 7, sourceEnd: 10, timelineStart: 5, timelineEnd: 8 },
   ];
 
-  const xml = generateFcpxml(video, clips, []);
+  const xml = generateFcpxml(video, clips);
 
   assert.match(xml, /<fcpxml version="1.10">/);
   assert.match(xml, /frameDuration="1\/30s"/);
@@ -29,34 +29,20 @@ test("generateFcpxml embeds one asset-clip per timeline clip with frame-accurate
   assert.match(xml, /offset="150\/30s" duration="90\/30s" start="210\/30s"/);
 });
 
-test("generateFcpxml attaches captions only to the clip whose timeline range contains them", () => {
-  const clips = [
-    { sourceStart: 0, sourceEnd: 5, timelineStart: 0, timelineEnd: 5 },
-    { sourceStart: 5, sourceEnd: 10, timelineStart: 5, timelineEnd: 10 },
-  ];
-  const captions = [
-    { timelineStart: 1, timelineEnd: 2, text: "最初のキャプション" },
-    { timelineStart: 6, timelineEnd: 7, text: "2つ目のキャプション" },
-  ];
+test("generateFcpxml never references a <title>/<effect> template (Premiere rejects the whole file if the Motion template UID can't be resolved)", () => {
+  const xml = generateFcpxml(video, [{ sourceStart: 0, sourceEnd: 5, timelineStart: 0, timelineEnd: 5 }]);
 
-  const xml = generateFcpxml(video, clips, captions);
-  const titleCount = (xml.match(/<title name="caption"/g) ?? []).length;
-
-  assert.equal(titleCount, 2);
-  assert.match(xml, /最初のキャプション/);
-  assert.match(xml, /2つ目のキャプション/);
+  assert.doesNotMatch(xml, /<title/);
+  assert.doesNotMatch(xml, /<effect/);
 });
 
-test("generateFcpxml escapes special XML characters in filenames and captions", () => {
-  const xml = generateFcpxml(
-    { ...video, filename: `a & b <c>.mp4` },
-    [{ sourceStart: 0, sourceEnd: 1, timelineStart: 0, timelineEnd: 1 }],
-    [{ timelineStart: 0, timelineEnd: 1, text: `<tag> & "quote"` }]
-  );
+test("generateFcpxml escapes special XML characters in the filename", () => {
+  const xml = generateFcpxml({ ...video, filename: `a & b <c>.mp4` }, [
+    { sourceStart: 0, sourceEnd: 1, timelineStart: 0, timelineEnd: 1 },
+  ]);
 
   assert.doesNotMatch(xml.replace(/<\?xml.*?\?>/, ""), /a & b <c>\.mp4/);
   assert.match(xml, /a &amp; b &lt;c&gt;\.mp4/);
-  assert.match(xml, /&lt;tag&gt; &amp; &quot;quote&quot;/);
 });
 
 test("generateSrt formats timestamps as HH:MM:SS,mmm and numbers sequentially", () => {

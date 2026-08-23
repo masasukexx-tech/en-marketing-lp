@@ -36,8 +36,7 @@ export async function GET(request: NextRequest) {
       height: videoAsset.height,
       fps: videoAsset.fps,
     },
-    videoAsset.timelineClips,
-    videoAsset.captions
+    videoAsset.timelineClips
   );
   const srt = generateSrt(videoAsset.captions);
 

@@ -99,7 +99,7 @@ video-auto-edit/
 | 13 | Caption生成・同期 | ✅ |
 | 14 | 確認画面（プレビュー・復元機能） | ✅ 動画プレビュー＋区間ハイライトバー（クリックでシーク）・復元操作あり |
 | 15 | SRT生成 | ✅ |
-| 16 | FCPXML生成 | ✅ 基本構造のみ。実際のPremiere importでの検証は未実施 |
+| 16 | FCPXML生成 | ✅ 実際のPremiere Proで読み込み確認済み（`ファイル > 読み込み`から）。キャプションはFCPXMLに含めず、SRT単独インポートに一本化（下記参照） |
 | 17 | ZIP Export | ✅ |
 | 18 | build / lint / typecheck | ⚠️ typecheckはスタブ型で検証済み・純粋ロジックは`npm test`で自動テスト済み（16件pass）。`npm install`が組織ポリシーでブロックされ実パッケージでのbuild/lintは未実行 |
 | 19 | 実際のEN案件動画でのテスト | ❌ 未実施（ffmpeg/faster-whisperが無い環境のため。本番同等の実行環境が必要） |
@@ -113,5 +113,7 @@ video-auto-edit/
 
 ## 既知の制約
 
-- この開発環境には `ffmpeg`/`ffprobe`、Python の `faster-whisper`/`fugashi`/`rapidfuzz`、`npm install`（組織ポリシーで registry.npmjs.org / apt リポジトリへのアクセスがブロックされる）がいずれも無いため、実際に動画を1本通す統合テストはできていません。`lib/`配下の純粋ロジックはNode組み込みテストランナーで実行・pass確認済みですが（`npm test`）、ffmpeg/faster-whisper呼び出しを含むAPI Route全体の統合動作・Premiere Proでの実際のFCPXML importは未検証です。手元PCでのセットアップ後、必ず実動画でお試しください。
+- この開発環境には `ffmpeg`/`ffprobe`、Python の `faster-whisper`/`fugashi`/`rapidfuzz`、`npm install`（組織ポリシーで registry.npmjs.org / apt リポジトリへのアクセスがブロックされる）がいずれも無いため、コード自体は実際のユーザーによる動作確認（フルセットアップ済みの手元Mac）を経て修正を重ねています。`lib/`配下の純粋ロジックはNode組み込みテストランナーで実行・pass確認済みです（`npm test`）。
+- **FCPXMLにはキャプションを含めません**。当初は`<title>`要素で字幕を焼き込む実装でしたが、Final Cut Pro/Motion付属テンプレート(.moti)への有効な参照が無いとPremiere Pro側が「サポートされていないファイル形式です」としてFCPXML全体のインポートを拒否することが実機検証で判明したため撤去しました。字幕は`captions.srt`を**単独で**`ファイル > 読み込み`することで、Premiereのネイティブ字幕トラックとして追加してください（`project.fcpxml`をインポートするのとは別操作です）。
+- **`project.fcpxml`は必ずメニューバーの`ファイル > 読み込み`から開いてください**。プロジェクトパネルの「メディアを読み込む」ボタンは動画/音声などのメディアファイル専用で、FCPXML(プロジェクト形式)は選択できてもグレーアウトしたままになります。
 - フィラー辞書・言い直しトリガー語・confidence閾値は設計書のルールをそのまま初期値化した簡易版です。誤判定が多い場合は `lib/edit-decision.ts` の `CUT_CONFIDENCE_THRESHOLD` や `scripts/analyze_text.py` の辞書を調整してください。

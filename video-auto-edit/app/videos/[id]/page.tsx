@@ -120,10 +120,14 @@ export default function VideoReviewPage({ params }: { params: { id: string } }) 
       </div>
 
       <a href={`/api/export?videoAssetId=${data.id}`}>
-        <button type="button" style={{ marginBottom: "1rem" }}>
+        <button type="button" style={{ marginBottom: "0.25rem" }}>
           Premiere用データをZIPでエクスポート
         </button>
       </a>
+      <p style={{ fontSize: "0.85em", opacity: 0.7, marginTop: 0, marginBottom: "1rem" }}>
+        ZIP内の project.fcpxml はPremiereの「ファイル &gt; 読み込み」（プロジェクトパネルの「メディアを読み込む」ではありません）で開いてください。
+        字幕は project.fcpxml には含めていません。captions.srt を単独で読み込むとPremiereのネイティブ字幕トラックとして追加されます。
+      </p>
 
       <h2>カット / 候補区間（{problems.length}件）</h2>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
