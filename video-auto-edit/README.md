@@ -33,6 +33,16 @@ npm run dev
 # http://localhost:3000
 ```
 
+## テスト
+
+外部依存（ffmpeg/faster-whisper等）を必要としない純粋なロジック（`lib/timeline.ts`, `lib/ffmpeg.ts`のパーサー, `lib/edit-decision.ts`のカット判定, `lib/premiere-export.ts`のFCPXML/SRT生成）はNode組み込みのテストランナーで実行できます。追加のnpmパッケージは不要です（Node 22.6+が必要）。
+
+```bash
+npm test
+```
+
+`scripts/test-hooks.mjs` / `scripts/test-register.mjs` は拡張子なし相対import（`"./ffmpeg"`）をテスト実行時にのみ解決するためのNode ESM resolve hookで、アプリ本体（Next.js経由の実行）には影響しません。
+
 ## ディレクトリ構成
 
 ```
@@ -88,8 +98,8 @@ video-auto-edit/
 | 15 | SRT生成 | ✅ |
 | 16 | FCPXML生成 | ✅ 基本構造のみ。実際のPremiere importでの検証は未実施 |
 | 17 | ZIP Export | ✅ |
-| 18 | build / lint / typecheck | ⚠️ typecheckは実行済み。実行環境にffmpeg/faster-whisperが無いため統合動作は未検証 |
-| 19 | 実際のEN案件動画でのテスト | ❌ 未実施（本番同等の実行環境が必要） |
+| 18 | build / lint / typecheck | ⚠️ typecheckはスタブ型で検証済み・純粋ロジックは`npm test`で自動テスト済み（16件pass）。`npm install`が組織ポリシーでブロックされ実パッケージでのbuild/lintは未実行 |
+| 19 | 実際のEN案件動画でのテスト | ❌ 未実施（ffmpeg/faster-whisperが無い環境のため。本番同等の実行環境が必要） |
 
 ## 追加機能（初期スキャフォールド後に実装）
 
@@ -99,6 +109,5 @@ video-auto-edit/
 
 ## 既知の制約
 
-- この開発環境には `ffmpeg`/`ffprobe` と Python の `faster-whisper`/`fugashi`/`rapidfuzz` がインストールされていないため、コードの型チェック・ビルドは通していますが、実際に動画を1本通す統合テストはできていません。手元PCでのセットアップ後、必ず実動画でお試しください。
+- この開発環境には `ffmpeg`/`ffprobe`、Python の `faster-whisper`/`fugashi`/`rapidfuzz`、`npm install`（組織ポリシーで registry.npmjs.org / apt リポジトリへのアクセスがブロックされる）がいずれも無いため、実際に動画を1本通す統合テストはできていません。`lib/`配下の純粋ロジックはNode組み込みテストランナーで実行・pass確認済みですが（`npm test`）、ffmpeg/faster-whisper呼び出しを含むAPI Route全体の統合動作・Premiere Proでの実際のFCPXML importは未検証です。手元PCでのセットアップ後、必ず実動画でお試しください。
 - フィラー辞書・言い直しトリガー語・confidence閾値は設計書のルールをそのまま初期値化した簡易版です。誤判定が多い場合は `lib/edit-decision.ts` の `CUT_CONFIDENCE_THRESHOLD` や `scripts/analyze_text.py` の辞書を調整してください。
-- 確認画面には動画プレビューやハイライト表示（ロードマップ#14の完全版）は含まれていません。次のステップとして追加が必要です。
