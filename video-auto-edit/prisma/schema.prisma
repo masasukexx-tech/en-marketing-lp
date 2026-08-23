@@ -1,0 +1,132 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  cutStrength String   @default("standard") // weak / standard / strong
+  settings    String // JSON文字列（自動カットON/OFF等のフラグ）
+  createdAt   DateTime @default(now())
+
+  videoAssets VideoAsset[]
+  dictionary  DictionaryTerm[]
+}
+
+model VideoAsset {
+  id            String   @id @default(cuid())
+  projectId     String
+  storagePath   String
+  filename      String
+  durationSec   Float
+  width         Int
+  height        Int
+  fps           Float
+  fileSizeBytes BigInt
+  uploadedAt    DateTime @default(now())
+
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  transcript    Transcript?
+  editDecisions EditDecision[]
+  timelineClips TimelineClip[]
+  captions      Caption[]
+
+  @@index([projectId])
+}
+
+model Transcript {
+  id           String @id @default(cuid())
+  videoAssetId String @unique
+  engine       String @default("faster-whisper-large-v3")
+  language     String @default("ja")
+
+  videoAsset VideoAsset          @relation(fields: [videoAssetId], references: [id], onDelete: Cascade)
+  segments   TranscriptSegment[]
+}
+
+model TranscriptSegment {
+  id           String @id @default(cuid())
+  transcriptId String
+  speaker      String?
+  text         String
+  startSec     Float
+  endSec       Float
+  confidence   Float
+
+  transcript Transcript      @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  words      WordTimestamp[]
+
+  @@index([transcriptId])
+}
+
+model WordTimestamp {
+  id         String @id @default(cuid())
+  segmentId  String
+  word       String
+  startSec   Float
+  endSec     Float
+  confidence Float
+
+  segment TranscriptSegment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+
+  @@index([segmentId])
+}
+
+model EditDecision {
+  id           String  @id @default(cuid())
+  videoAssetId String
+  sourceStart  Float
+  sourceEnd    Float
+  decision     String // keep / cut / candidate
+  reason       String // filler / silence / retake / manual
+  reasonDetail String?
+  confidence   Float
+  restored     Boolean @default(false)
+
+  videoAsset VideoAsset @relation(fields: [videoAssetId], references: [id], onDelete: Cascade)
+
+  @@index([videoAssetId])
+}
+
+model TimelineClip {
+  id            String @id @default(cuid())
+  videoAssetId  String
+  sourceStart   Float
+  sourceEnd     Float
+  timelineStart Float
+  timelineEnd   Float
+  orderIndex    Int
+
+  videoAsset VideoAsset @relation(fields: [videoAssetId], references: [id], onDelete: Cascade)
+
+  @@index([videoAssetId])
+}
+
+model Caption {
+  id            String @id @default(cuid())
+  videoAssetId  String
+  timelineStart Float
+  timelineEnd   Float
+  text          String
+
+  videoAsset VideoAsset @relation(fields: [videoAssetId], references: [id], onDelete: Cascade)
+
+  @@index([videoAssetId])
+}
+
+model DictionaryTerm {
+  id        String  @id @default(cuid())
+  projectId String
+  term      String
+  reading   String?
+  category  String?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
