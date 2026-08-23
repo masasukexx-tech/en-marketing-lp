@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface EditDecision {
   id: string;
@@ -28,10 +28,18 @@ function formatTime(sec: number): string {
   return `${m}:${s.padStart(4, "0")}`;
 }
 
-/** 確認画面：カット/候補区間をプレビューし、誤削除を復元できる（design doc §3-4, §5-14） */
+/** カット/候補区間の色分け（design doc §3-4: 復元されたものは"残す"扱い） */
+function segmentColor(d: EditDecision): string {
+  if (d.decision === "keep" || d.restored) return "#2e7d32";
+  if (d.decision === "candidate") return "#f9a825";
+  return "#c62828";
+}
+
+/** 確認画面：動画プレビュー＋ハイライトバーでカット/候補区間を確認し、誤削除を復元できる（design doc §3-4, §5-14） */
 export default function VideoReviewPage({ params }: { params: { id: string } }) {
   const [data, setData] = useState<VideoAssetDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   async function load() {
     const res = await fetch(`/api/videos/${params.id}`);
@@ -60,6 +68,12 @@ export default function VideoReviewPage({ params }: { params: { id: string } }) 
     await load();
   }
 
+  function seekTo(sec: number) {
+    if (videoRef.current) {
+      videoRef.current.currentTime = sec;
+    }
+  }
+
   if (error) return <p>エラー: {error}</p>;
   if (!data) return <p>読み込み中...</p>;
 
@@ -72,6 +86,38 @@ export default function VideoReviewPage({ params }: { params: { id: string } }) 
         尺: {formatTime(data.durationSec)} / タイムラインクリップ数: {data.timelineClips.length} / キャプション数:{" "}
         {data.captions.length}
       </p>
+
+      <video
+        ref={videoRef}
+        src={`/api/videos/${data.id}/source`}
+        controls
+        style={{ width: "100%", background: "#000" }}
+      />
+
+      <div
+        style={{
+          display: "flex",
+          width: "100%",
+          height: 24,
+          marginTop: 4,
+          marginBottom: "1rem",
+          border: "1px solid #444",
+        }}
+        title="緑=保持 / 黄=候補(要確認) / 赤=カット。クリックでその位置に再生ジャンプ"
+      >
+        {data.editDecisions.map((d) => (
+          <div
+            key={d.id}
+            onClick={() => seekTo(d.sourceStart)}
+            style={{
+              width: `${((d.sourceEnd - d.sourceStart) / Math.max(data.durationSec, 0.001)) * 100}%`,
+              background: segmentColor(d),
+              cursor: "pointer",
+              minWidth: 1,
+            }}
+          />
+        ))}
+      </div>
 
       <a href={`/api/export?videoAssetId=${data.id}`}>
         <button type="button" style={{ marginBottom: "1rem" }}>
@@ -94,7 +140,9 @@ export default function VideoReviewPage({ params }: { params: { id: string } }) 
           {problems.map((d) => (
             <tr key={d.id} style={{ borderBottom: "1px solid #2a2a2a" }}>
               <td>
-                {formatTime(d.sourceStart)} - {formatTime(d.sourceEnd)}
+                <button type="button" onClick={() => seekTo(d.sourceStart)} style={{ background: "none", border: "none", color: "inherit", textDecoration: "underline", cursor: "pointer" }}>
+                  {formatTime(d.sourceStart)} - {formatTime(d.sourceEnd)}
+                </button>
               </td>
               <td>
                 {d.decision}

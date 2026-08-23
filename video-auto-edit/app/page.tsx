@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
-/** アップロード → 自動カット実行までを1画面で行うシンプルなトップページ（design doc §5-3, §1-5） */
-export default function HomePage() {
+function UploadForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const existingProjectId = searchParams.get("projectId");
   const [projectName, setProjectName] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -23,7 +25,11 @@ export default function HomePage() {
       setStatus("アップロード中...");
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("projectName", projectName);
+      if (existingProjectId) {
+        formData.append("projectId", existingProjectId);
+      } else {
+        formData.append("projectName", projectName);
+      }
 
       const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
       if (!uploadRes.ok) throw new Error(await uploadRes.text());
@@ -46,11 +52,10 @@ export default function HomePage() {
   }
 
   return (
-    <main style={{ maxWidth: 560 }}>
-      <h1>AI動画自動編集システム</h1>
-      <p style={{ opacity: 0.7 }}>クラウド従量課金ゼロ・すべてローカルPC上で完結（完全無料構成版）</p>
-
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+      {existingProjectId ? (
+        <p style={{ opacity: 0.7 }}>既存プロジェクトに動画を追加します（project: {existingProjectId}）</p>
+      ) : (
         <label>
           プロジェクト名
           <input
@@ -61,23 +66,40 @@ export default function HomePage() {
             style={{ display: "block", width: "100%", marginTop: 4 }}
           />
         </label>
+      )}
 
-        <label>
-          動画ファイル
-          <input
-            type="file"
-            accept="video/*"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            style={{ display: "block", width: "100%", marginTop: 4 }}
-          />
-        </label>
+      <label>
+        動画ファイル
+        <input
+          type="file"
+          accept="video/*"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          style={{ display: "block", width: "100%", marginTop: 4 }}
+        />
+      </label>
 
-        <button type="submit" disabled={busy}>
-          {busy ? "処理中..." : "アップロード＆自動カット実行"}
-        </button>
-      </form>
+      <button type="submit" disabled={busy}>
+        {busy ? "処理中..." : "アップロード＆自動カット実行"}
+      </button>
 
       {status && <p style={{ marginTop: "1rem" }}>{status}</p>}
+    </form>
+  );
+}
+
+/** アップロード → 自動カット実行までを1画面で行うシンプルなトップページ（design doc §5-3, §1-5） */
+export default function HomePage() {
+  return (
+    <main style={{ maxWidth: 560 }}>
+      <h1>AI動画自動編集システム</h1>
+      <p style={{ opacity: 0.7 }}>クラウド従量課金ゼロ・すべてローカルPC上で完結（完全無料構成版）</p>
+      <p>
+        <Link href="/projects">プロジェクト一覧を見る →</Link>
+      </p>
+
+      <Suspense fallback={<p>読み込み中...</p>}>
+        <UploadForm />
+      </Suspense>
     </main>
   );
 }

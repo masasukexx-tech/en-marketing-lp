@@ -38,13 +38,19 @@ npm run dev
 ```
 video-auto-edit/
 ├─ app/
-│  ├─ page.tsx                    # アップロード＋自動カット実行
-│  ├─ videos/[id]/page.tsx        # 確認画面（カット/候補区間の一覧・復元操作）
+│  ├─ page.tsx                          # アップロード＋自動カット実行（?projectIdで既存プロジェクトに追加）
+│  ├─ projects/page.tsx                 # プロジェクト一覧
+│  ├─ projects/[id]/page.tsx            # プロジェクト詳細（カット強度設定・ユーザー辞書管理・動画一覧）
+│  ├─ videos/[id]/page.tsx              # 確認画面（動画プレビュー・区間ハイライトバー・復元操作）
 │  └─ api/
-│     ├─ upload/route.ts          # 素材アップロード・メタデータ取得
-│     ├─ process/route.ts         # 文字起こし〜EditDecision/TimelineClip/Caption生成
-│     ├─ videos/[id]/route.ts     # 確認画面用データ取得・復元操作(PATCH)
-│     └─ export/route.ts          # FCPXML/SRT生成・ZIPダウンロード
+│     ├─ upload/route.ts                # 素材アップロード・メタデータ取得
+│     ├─ process/route.ts               # 文字起こし〜EditDecision/TimelineClip/Caption生成
+│     ├─ projects/route.ts              # プロジェクト一覧取得
+│     ├─ projects/[id]/route.ts         # プロジェクト詳細取得・カット強度変更(PATCH)
+│     ├─ projects/[id]/dictionary/route.ts  # ユーザー辞書の追加(POST)・削除(DELETE)
+│     ├─ videos/[id]/route.ts           # 確認画面用データ取得・復元操作(PATCH)
+│     ├─ videos/[id]/source/route.ts    # 元動画のRange対応ストリーミング配信（プレビュー再生用）
+│     └─ export/route.ts                # FCPXML/SRT生成・ZIPダウンロード
 ├─ lib/
 │  ├─ ffmpeg.ts                   # ffprobe/ffmpeg/silencedetectラッパー
 │  ├─ edit-decision.ts            # 無音/フィラー/言い直し判定の統合ロジック
@@ -78,12 +84,18 @@ video-auto-edit/
 | 11 | EditDecision生成（keep/cut/candidate） | ✅ |
 | 12 | TimelineClip生成 | ✅ |
 | 13 | Caption生成・同期 | ✅ |
-| 14 | 確認画面（プレビュー・復元機能） | ⚠️ 最小限のテーブルUIのみ。動画プレビュー/ハイライト表示は未実装 |
+| 14 | 確認画面（プレビュー・復元機能） | ✅ 動画プレビュー＋区間ハイライトバー（クリックでシーク）・復元操作あり |
 | 15 | SRT生成 | ✅ |
 | 16 | FCPXML生成 | ✅ 基本構造のみ。実際のPremiere importでの検証は未実施 |
 | 17 | ZIP Export | ✅ |
 | 18 | build / lint / typecheck | ⚠️ typecheckは実行済み。実行環境にffmpeg/faster-whisperが無いため統合動作は未検証 |
 | 19 | 実際のEN案件動画でのテスト | ❌ 未実施（本番同等の実行環境が必要） |
+
+## 追加機能（初期スキャフォールド後に実装）
+
+- プロジェクト一覧・詳細画面（`/projects`, `/projects/[id]`）: カット強度(weak/standard/strong)の切り替え、ユーザー辞書（固有名詞リスト）の追加・削除、既存プロジェクトへの動画追加、動画ごとの再実行ボタン
+- 確認画面に `<video>` プレビューと区間ハイライトバーを追加（緑=保持 / 黄=候補 / 赤=カット、クリックでシーク）。動画本体は `storage/` が静的配信対象外のため `/api/videos/[id]/source` がHTTP Range対応でストリーミング配信する
+- ESLint設定 (`next/core-web-vitals`) を追加
 
 ## 既知の制約
 
