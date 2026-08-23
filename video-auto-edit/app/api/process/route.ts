@@ -8,7 +8,8 @@ import { prisma } from "@/lib/db";
 import { extractAudio } from "@/lib/ffmpeg";
 import { generateEditDecisions, type TranscriptSegmentLike, type CutStrength } from "@/lib/edit-decision";
 import { rebuildTimelineAndCaptions } from "@/lib/rebuild";
-import { projectPaths } from "@/lib/storage";
+import { writeProgress } from "@/lib/progress";
+import { progressFilePath, projectPaths } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
@@ -35,6 +36,8 @@ interface TranscribeOutput {
 /**
  * 文字起こし → 無音/フィラー/言い直し解析 → EditDecision/TimelineClip/Caption 生成までの
  * 一連のパイプラインをキックする（design doc §5-6〜§5-13、ロードマップ全体をここで統合）。
+ * 処理中は lib/progress.ts 経由で progress.json に進捗を書き込み、
+ * GET /api/videos/[id]/progress からポーリングできるようにする。
  */
 export async function POST(request: NextRequest) {
   const { videoAssetId } = (await request.json()) as { videoAssetId?: string };
@@ -50,77 +53,92 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "video asset not found" }, { status: 404 });
   }
 
-  const audioPath = projectPaths.audio(videoAsset.projectId, `${videoAsset.id}.wav`);
-  await extractAudio(videoAsset.storagePath, audioPath);
+  try {
+    await writeProgress(videoAssetId, "extracting_audio", 0);
+    const audioPath = projectPaths.audio(videoAsset.projectId, `${videoAsset.id}.wav`);
+    await extractAudio(videoAsset.storagePath, audioPath);
+    await writeProgress(videoAssetId, "extracting_audio", 100);
 
-  const transcriptJsonPath = projectPaths.transcript(videoAsset.projectId, `${videoAsset.id}.json`);
-  const initialPrompt = videoAsset.project.dictionary.map((d) => d.term).join(", ");
+    const transcriptJsonPath = projectPaths.transcript(videoAsset.projectId, `${videoAsset.id}.json`);
+    const initialPrompt = videoAsset.project.dictionary.map((d) => d.term).join(", ");
 
-  await runPythonScript("scripts/transcribe.py", [
-    audioPath,
-    transcriptJsonPath,
-    "--model",
-    process.env.WHISPER_MODEL ?? "large-v3",
-    "--language",
-    "ja",
-    "--initial-prompt",
-    initialPrompt,
-  ]);
+    await runPythonScript("scripts/transcribe.py", [
+      audioPath,
+      transcriptJsonPath,
+      "--model",
+      process.env.WHISPER_MODEL ?? "large-v3",
+      "--language",
+      "ja",
+      "--initial-prompt",
+      initialPrompt,
+      "--progress-path",
+      progressFilePath(videoAssetId),
+    ]);
 
-  const transcriptRaw = JSON.parse(await fs.readFile(transcriptJsonPath, "utf-8")) as TranscribeOutput;
-  const analysisOutputJsonPath = projectPaths.transcript(videoAsset.projectId, `${videoAsset.id}.analysis.json`);
+    const transcriptRaw = JSON.parse(await fs.readFile(transcriptJsonPath, "utf-8")) as TranscribeOutput;
+    const analysisOutputJsonPath = projectPaths.transcript(videoAsset.projectId, `${videoAsset.id}.analysis.json`);
 
-  const editDecisionRows = await generateEditDecisions({
-    audioPath,
-    durationSec: videoAsset.durationSec,
-    segments: transcriptRaw.segments,
-    transcriptJsonPath,
-    analysisOutputJsonPath,
-    cutStrength: (videoAsset.project.cutStrength as CutStrength) ?? "standard",
-  });
+    await writeProgress(videoAssetId, "analyzing", 0);
+    const editDecisionRows = await generateEditDecisions({
+      audioPath,
+      durationSec: videoAsset.durationSec,
+      segments: transcriptRaw.segments,
+      transcriptJsonPath,
+      analysisOutputJsonPath,
+      cutStrength: (videoAsset.project.cutStrength as CutStrength) ?? "standard",
+    });
+    await writeProgress(videoAssetId, "analyzing", 100);
 
-  await prisma.$transaction([
-    prisma.transcript.deleteMany({ where: { videoAssetId } }),
-    prisma.editDecision.deleteMany({ where: { videoAssetId } }),
-    prisma.timelineClip.deleteMany({ where: { videoAssetId } }),
-    prisma.caption.deleteMany({ where: { videoAssetId } }),
-  ]);
+    await writeProgress(videoAssetId, "saving", 0);
+    await prisma.$transaction([
+      prisma.transcript.deleteMany({ where: { videoAssetId } }),
+      prisma.editDecision.deleteMany({ where: { videoAssetId } }),
+      prisma.timelineClip.deleteMany({ where: { videoAssetId } }),
+      prisma.caption.deleteMany({ where: { videoAssetId } }),
+    ]);
 
-  const transcript = await prisma.transcript.create({
-    data: {
-      videoAssetId,
-      engine: transcriptRaw.engine,
-      language: transcriptRaw.language,
-      segments: {
-        create: transcriptRaw.segments.map((seg) => ({
-          text: seg.text,
-          startSec: seg.startSec,
-          endSec: seg.endSec,
-          confidence: seg.confidence,
-          words: {
-            create: seg.words.map((w) => ({
-              word: w.word,
-              startSec: w.startSec,
-              endSec: w.endSec,
-              confidence: w.confidence,
-            })),
-          },
-        })),
+    const transcript = await prisma.transcript.create({
+      data: {
+        videoAssetId,
+        engine: transcriptRaw.engine,
+        language: transcriptRaw.language,
+        segments: {
+          create: transcriptRaw.segments.map((seg) => ({
+            text: seg.text,
+            startSec: seg.startSec,
+            endSec: seg.endSec,
+            confidence: seg.confidence,
+            words: {
+              create: seg.words.map((w) => ({
+                word: w.word,
+                startSec: w.startSec,
+                endSec: w.endSec,
+                confidence: w.confidence,
+              })),
+            },
+          })),
+        },
       },
-    },
-  });
+    });
 
-  await prisma.editDecision.createMany({
-    data: editDecisionRows.map((d) => ({ ...d, videoAssetId })),
-  });
+    await prisma.editDecision.createMany({
+      data: editDecisionRows.map((d) => ({ ...d, videoAssetId })),
+    });
 
-  const { timelineClips, captions } = await rebuildTimelineAndCaptions(videoAssetId);
+    const { timelineClips, captions } = await rebuildTimelineAndCaptions(videoAssetId);
+    await writeProgress(videoAssetId, "saving", 100);
+    await writeProgress(videoAssetId, "done", 100);
 
-  return NextResponse.json({
-    ok: true,
-    transcriptId: transcript.id,
-    editDecisions: editDecisionRows.length,
-    timelineClips,
-    captions,
-  });
+    return NextResponse.json({
+      ok: true,
+      transcriptId: transcript.id,
+      editDecisions: editDecisionRows.length,
+      timelineClips,
+      captions,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await writeProgress(videoAssetId, "error", 0, message);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

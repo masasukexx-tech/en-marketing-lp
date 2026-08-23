@@ -4,6 +4,9 @@ import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { ProgressBar } from "./_components/ProgressBar";
+import { stageLabel, useProcessingProgress } from "./_components/useProcessingProgress";
+
 function UploadForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -12,6 +15,9 @@ function UploadForm() {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [processingVideoId, setProcessingVideoId] = useState<string | null>(null);
+
+  const progress = useProcessingProgress(processingVideoId, busy);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -21,6 +27,7 @@ function UploadForm() {
     }
 
     setBusy(true);
+    setProcessingVideoId(null);
     try {
       setStatus("アップロード中...");
       const formData = new FormData();
@@ -35,7 +42,9 @@ function UploadForm() {
       if (!uploadRes.ok) throw new Error(await uploadRes.text());
       const { videoAsset } = await uploadRes.json();
 
-      setStatus("文字起こし・自動カット判定中...（動画の実尺の1〜3倍ほどかかります）");
+      setStatus("文字起こし・自動カット判定中...（動画の実尺の1〜3倍ほどかかります。初回はモデルのダウンロードで追加の時間がかかります）");
+      setProcessingVideoId(videoAsset.id);
+
       const processRes = await fetch("/api/process", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -83,6 +92,13 @@ function UploadForm() {
       </button>
 
       {status && <p style={{ marginTop: "1rem" }}>{status}</p>}
+
+      {busy && progress && progress.stage && (
+        <ProgressBar
+          percent={progress.percent}
+          label={`${stageLabel(progress.stage)}${progress.message ? ` — ${progress.message}` : ""}`}
+        />
+      )}
     </form>
   );
 }

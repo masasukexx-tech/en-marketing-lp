@@ -26,3 +26,16 @@ const SUBDIRS = ["original", "audio", "edited", "captions", "transcript", "timel
 export async function ensureProjectDirs(projectId: string): Promise<void> {
   await Promise.all(SUBDIRS.map((dir) => fs.mkdir(path.join(projectDir(projectId), dir), { recursive: true })));
 }
+
+/**
+ * 処理進捗ファイル（videoAssetId単位、プロジェクトをまたいでフラットに配置）。
+ * 確認画面から短い間隔でポーリングされるため、プロジェクトのDB参照無しで
+ * 直接パスを組み立てられるようにしている。
+ */
+export function progressFilePath(videoAssetId: string): string {
+  return path.join(STORAGE_ROOT, "progress", `${videoAssetId}.json`);
+}
+
+export async function ensureProgressDir(): Promise<void> {
+  await fs.mkdir(path.join(STORAGE_ROOT, "progress"), { recursive: true });
+}

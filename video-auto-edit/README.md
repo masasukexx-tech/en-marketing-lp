@@ -49,6 +49,7 @@ npm test
 video-auto-edit/
 ├─ app/
 │  ├─ page.tsx                          # アップロード＋自動カット実行（?projectIdで既存プロジェクトに追加）
+│  ├─ _components/                      # ProgressBar・進捗ポーリングhookなど共通UI部品
 │  ├─ projects/page.tsx                 # プロジェクト一覧
 │  ├─ projects/[id]/page.tsx            # プロジェクト詳細（カット強度設定・ユーザー辞書管理・動画一覧）
 │  ├─ videos/[id]/page.tsx              # 確認画面（動画プレビュー・区間ハイライトバー・復元操作）
@@ -59,10 +60,12 @@ video-auto-edit/
 │     ├─ projects/[id]/route.ts         # プロジェクト詳細取得・カット強度変更(PATCH)
 │     ├─ projects/[id]/dictionary/route.ts  # ユーザー辞書の追加(POST)・削除(DELETE)
 │     ├─ videos/[id]/route.ts           # 確認画面用データ取得・復元操作(PATCH)
+│     ├─ videos/[id]/progress/route.ts  # 処理進捗のポーリング取得（%表示用）
 │     ├─ videos/[id]/source/route.ts    # 元動画のRange対応ストリーミング配信（プレビュー再生用）
 │     └─ export/route.ts                # FCPXML/SRT生成・ZIPダウンロード
 ├─ lib/
 │  ├─ ffmpeg.ts                   # ffprobe/ffmpeg/silencedetectラッパー
+│  ├─ progress.ts                 # 処理進捗(stage/%)の読み書き・全体%への変換
 │  ├─ edit-decision.ts            # 無音/フィラー/言い直し判定の統合ロジック
 │  ├─ rebuild.ts                  # EditDecision→TimelineClip/Captionの再計算（復元操作でも使用）
 │  ├─ timeline.ts                 # TimelineClip組み立て・mapSourceToTimeline()
@@ -106,6 +109,7 @@ video-auto-edit/
 - プロジェクト一覧・詳細画面（`/projects`, `/projects/[id]`）: カット強度(weak/standard/strong)の切り替え、ユーザー辞書（固有名詞リスト）の追加・削除、既存プロジェクトへの動画追加、動画ごとの再実行ボタン
 - 確認画面に `<video>` プレビューと区間ハイライトバーを追加（緑=保持 / 黄=候補 / 赤=カット、クリックでシーク）。動画本体は `storage/` が静的配信対象外のため `/api/videos/[id]/source` がHTTP Range対応でストリーミング配信する
 - ESLint設定 (`next/core-web-vitals`) を追加
+- **処理進捗の%表示**: 音声抽出→モデル読み込み→文字起こし→解析→保存の各ステージを`storage/progress/{videoAssetId}.json`に書き込み、`GET /api/videos/[id]/progress`でポーリングできるようにした。トップページ・プロジェクト詳細ページの両方で進捗バーとして表示される。文字起こし中はfaster-whisperがセグメントを出力するたびに`transcribe.py`が進捗を更新するので、実尺に対してどこまで進んだかが分かる。失敗時は`stage: "error"`として理由が表示される
 
 ## 既知の制約
 

@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { ProgressBar } from "../../_components/ProgressBar";
+import { stageLabel, useProcessingProgress } from "../../_components/useProcessingProgress";
+
 interface DictionaryTerm {
   id: string;
   term: string;
@@ -33,6 +36,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const [newTerm, setNewTerm] = useState("");
   const [newReading, setNewReading] = useState("");
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const progress = useProcessingProgress(processingId, processingId !== null);
 
   async function load() {
     const res = await fetch(`/api/projects/${params.id}`);
@@ -180,6 +184,12 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
               <button type="button" disabled={processingId === v.id} onClick={() => runProcess(v.id)}>
                 {processingId === v.id ? "処理中..." : "再実行"}
               </button>
+              {processingId === v.id && progress && progress.stage && (
+                <ProgressBar
+                  percent={progress.percent}
+                  label={`${stageLabel(progress.stage)}${progress.message ? ` — ${progress.message}` : ""}`}
+                />
+              )}
             </li>
           ))}
           {project.videoAssets.length === 0 && <p style={{ opacity: 0.7 }}>まだ動画がありません。</p>}
