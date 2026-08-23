@@ -1,0 +1,9 @@
+node_modules/
+.next/
+storage/
+!storage/.gitkeep
+!storage/projects/.gitkeep
+.env
+*.pyc
+__pycache__/
+.venv/
