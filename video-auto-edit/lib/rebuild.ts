@@ -1,5 +1,6 @@
+import { buildCaptionsFromWords } from "./captions";
 import { prisma } from "./db";
-import { buildTimelineClips, mapSourceToTimeline, withTimelineOffsets } from "./timeline";
+import { buildTimelineClips, withTimelineOffsets } from "./timeline";
 
 /**
  * 現在の EditDecision（ユーザーによる復元操作を含む）から TimelineClip / Caption を再計算する。
@@ -11,7 +12,10 @@ export async function rebuildTimelineAndCaptions(videoAssetId: string): Promise<
 }> {
   const [editDecisions, transcript] = await Promise.all([
     prisma.editDecision.findMany({ where: { videoAssetId } }),
-    prisma.transcript.findUnique({ where: { videoAssetId }, include: { segments: true } }),
+    prisma.transcript.findUnique({
+      where: { videoAssetId },
+      include: { segments: { orderBy: { startSec: "asc" }, include: { words: { orderBy: { startSec: "asc" } } } } },
+    }),
   ]);
 
   const clips = buildTimelineClips(editDecisions);
@@ -26,14 +30,8 @@ export async function rebuildTimelineAndCaptions(videoAssetId: string): Promise<
     await prisma.timelineClip.createMany({ data: timelineClips });
   }
 
-  const captionsData = (transcript?.segments ?? [])
-    .map((seg) => {
-      const start = mapSourceToTimeline(seg.startSec, timelineClips);
-      const end = mapSourceToTimeline(seg.endSec, timelineClips);
-      if (start === null || end === null) return null;
-      return { videoAssetId, timelineStart: start, timelineEnd: end, text: seg.text };
-    })
-    .filter((c): c is NonNullable<typeof c> => c !== null);
+  const words = (transcript?.segments ?? []).flatMap((seg) => seg.words);
+  const captionsData = buildCaptionsFromWords(words, timelineClips).map((c) => ({ ...c, videoAssetId }));
 
   if (captionsData.length) {
     await prisma.caption.createMany({ data: captionsData });

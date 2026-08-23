@@ -112,6 +112,8 @@ video-auto-edit/
 - 確認画面に `<video>` プレビューと区間ハイライトバーを追加（緑=保持 / 黄=候補 / 赤=カット、クリックでシーク）。動画本体は `storage/` が静的配信対象外のため `/api/videos/[id]/source` がHTTP Range対応でストリーミング配信する
 - ESLint設定 (`next/core-web-vitals`) を追加
 - **処理進捗の%表示**: 音声抽出→モデル読み込み→文字起こし→解析→保存の各ステージを`storage/progress/{videoAssetId}.json`に書き込み、`GET /api/videos/[id]/progress`でポーリングできるようにした。トップページ・プロジェクト詳細ページの両方で進捗バーとして表示される。文字起こし中はfaster-whisperがセグメントを出力するたびに`transcribe.py`が進捗を更新するので、実尺に対してどこまで進んだかが分かる。失敗時は`stage: "error"`として理由が表示される
+- **キャプションを単語単位で組み立て直す**（`lib/captions.ts`）: 当初は文字起こしセグメント(文単位)の開始/終了だけをタイムラインへマッピングしていたが、セグメントの一部の単語だけがフィラー/無音カットで削除されると、キャプションの表示時間が実際に画面に映っている尺とズレる不具合があった。word-levelタイムスタンプを使い、生き残った単語だけを追跡してキャプションを組み立てることで、カット（TimelineClipの切り替わり）をまたぐ箇所は必ずキャプションを分割し、表示時間を常に実際の映像と一致させるようにした
+- **手動カット機能**（確認画面）: ルールベースの自動判定では「そもそも不要な冒頭部分」のような主観的な範囲を判断できないため、任意の開始/終了秒を指定して直接カットできるフォームを追加（`lib/manual-cut.ts`, `POST /api/videos/[id]`）。既存のEditDecision行と重なる部分は自動的に分割される
 
 ## 既知の制約
 
@@ -119,4 +121,4 @@ video-auto-edit/
 - **Premiere ProはモダンなFCPXML(Final Cut Pro X形式)をそもそも読み込めません。** 当初はFCPXML(拡張子`.fcpxml`)を生成していましたが、実機検証で「ファイル > 読み込み」ダイアログ上で`.fcpxml`ファイルがそもそも選択できない（グレーアウトする）ことが判明しました。調べたところ、これは既知のPremiere Pro側の仕様上の制限で、Adobe公式ヘルプでも「PremiereがネイティブでimportできるのはFinal Cut Pro 7形式のXMLのみ」と案内されています（[Adobeヘルプ: Final Cut Proからの移行](https://helpx.adobe.com/premiere/desktop/organize-media/import-files/migrate-from-final-cut-pro-x.html)）。そのため `lib/premiere-export.ts` は最初からFinal Cut Pro 7形式のXML（通称XMEML、拡張子`.xml`）を生成するように変更しました。
 - **キャプションはXMLに含めません**。当初は`<title>`要素で字幕を焼き込む実装でしたが、Final Cut Pro/Motion付属テンプレート(.moti)への有効な参照が無いとインポートが拒否される問題もあり、そもそも書き出し形式自体を変更したことも踏まえて撤去しました。字幕は`captions.srt`を**単独で**`ファイル > 読み込み`することで、Premiereのネイティブ字幕トラックとして追加してください（`project.xml`をインポートするのとは別操作です）。
 - **`project.xml`は必ずメニューバーの`ファイル > 読み込み`から開いてください**。プロジェクトパネルの「メディアを読み込む」ボタンは動画/音声などのメディアファイル専用で、プロジェクト形式のXMLは選択できてもグレーアウトしたままになります。
-- フィラー辞書・言い直しトリガー語・confidence閾値は設計書のルールをそのまま初期値化した簡易版です。誤判定が多い場合は `lib/edit-decision.ts` の `CUT_CONFIDENCE_THRESHOLD` や `scripts/analyze_text.py` の辞書を調整してください。
+- フィラー辞書・言い直しトリガー語・confidence閾値は設計書のルールをそのまま初期値化した簡易版です。誤判定が多い場合は `lib/edit-decision.ts` の `CUT_CONFIDENCE_THRESHOLD` や `scripts/analyze_text.py` の辞書を調整してください。実運用フィードバックを受けて`FILLER_WORDS`は「あ」「え」等の短い間投詞も含めて拡充済みですが、カットが甘いと感じる場合はプロジェクト詳細画面でカット強度を`strong`にすると、confidenceが中途半端で今は"candidate"止まりの区間も自動カット対象になります。

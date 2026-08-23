@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
+import { splitDecisionsWithManualCut } from "@/lib/manual-cut";
 import { rebuildTimelineAndCaptions } from "@/lib/rebuild";
 
 export const runtime = "nodejs";
@@ -49,5 +50,39 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   await prisma.editDecision.update({ where: { id: editDecisionId }, data: { restored } });
   const result = await rebuildTimelineAndCaptions(params.id);
 
+  return NextResponse.json({ ok: true, ...result });
+}
+
+/**
+ * 任意区間の手動カット（design doc の自動判定では拾えない「そもそも不要な部分」向け）。
+ * body: { sourceStart: number, sourceEnd: number } （元動画のソース秒）
+ */
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+  const { sourceStart, sourceEnd } = (await request.json()) as { sourceStart?: number; sourceEnd?: number };
+
+  if (typeof sourceStart !== "number" || typeof sourceEnd !== "number" || !(sourceEnd > sourceStart)) {
+    return NextResponse.json(
+      { error: "sourceStart/sourceEnd must be numbers with sourceEnd > sourceStart" },
+      { status: 400 }
+    );
+  }
+
+  const videoAsset = await prisma.videoAsset.findUnique({ where: { id: params.id } });
+  if (!videoAsset) {
+    return NextResponse.json({ error: "video asset not found" }, { status: 404 });
+  }
+  if (sourceStart < 0 || sourceEnd > videoAsset.durationSec) {
+    return NextResponse.json({ error: "range must be within [0, durationSec]" }, { status: 400 });
+  }
+
+  const existing = await prisma.editDecision.findMany({ where: { videoAssetId: params.id } });
+  const updated = splitDecisionsWithManualCut(existing, sourceStart, sourceEnd);
+
+  await prisma.$transaction([
+    prisma.editDecision.deleteMany({ where: { videoAssetId: params.id } }),
+    prisma.editDecision.createMany({ data: updated.map((d) => ({ ...d, videoAssetId: params.id })) }),
+  ]);
+
+  const result = await rebuildTimelineAndCaptions(params.id);
   return NextResponse.json({ ok: true, ...result });
 }

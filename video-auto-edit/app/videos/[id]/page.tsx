@@ -39,6 +39,8 @@ function segmentColor(d: EditDecision): string {
 export default function VideoReviewPage({ params }: { params: { id: string } }) {
   const [data, setData] = useState<VideoAssetDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [manualStart, setManualStart] = useState("");
+  const [manualEnd, setManualEnd] = useState("");
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   async function load() {
@@ -72,6 +74,28 @@ export default function VideoReviewPage({ params }: { params: { id: string } }) 
     if (videoRef.current) {
       videoRef.current.currentTime = sec;
     }
+  }
+
+  async function submitManualCut(event: React.FormEvent) {
+    event.preventDefault();
+    const start = Number(manualStart);
+    const end = Number(manualEnd);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+      setError("開始秒より終了秒が大きい数値を入力してください");
+      return;
+    }
+    const res = await fetch(`/api/videos/${params.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sourceStart: start, sourceEnd: end }),
+    });
+    if (!res.ok) {
+      setError(await res.text());
+      return;
+    }
+    setManualStart("");
+    setManualEnd("");
+    await load();
   }
 
   if (error) return <p>エラー: {error}</p>;
@@ -118,6 +142,43 @@ export default function VideoReviewPage({ params }: { params: { id: string } }) 
           />
         ))}
       </div>
+
+      <section style={{ marginBottom: "1rem" }}>
+        <h2 style={{ fontSize: "1em", marginBottom: 4 }}>手動カット</h2>
+        <p style={{ fontSize: "0.85em", opacity: 0.7, marginTop: 0 }}>
+          AIの自動判定では拾えない「そもそも不要な部分」（冒頭の雑談など）を、秒数を指定して直接カットできます。
+          「現在位置」ボタンで動画プレビューの再生位置を入力欄に反映できます。
+        </p>
+        <form onSubmit={submitManualCut} style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+          <label>
+            開始(秒)
+            <input
+              type="number"
+              step="0.1"
+              value={manualStart}
+              onChange={(e) => setManualStart(e.target.value)}
+              style={{ width: 90, marginLeft: 4 }}
+            />
+          </label>
+          <button type="button" onClick={() => setManualStart(String(videoRef.current?.currentTime ?? 0))}>
+            現在位置
+          </button>
+          <label>
+            終了(秒)
+            <input
+              type="number"
+              step="0.1"
+              value={manualEnd}
+              onChange={(e) => setManualEnd(e.target.value)}
+              style={{ width: 90, marginLeft: 4 }}
+            />
+          </label>
+          <button type="button" onClick={() => setManualEnd(String(videoRef.current?.currentTime ?? 0))}>
+            現在位置
+          </button>
+          <button type="submit">この区間をカット</button>
+        </form>
+      </section>
 
       <a href={`/api/export?videoAssetId=${data.id}`}>
         <button type="button" style={{ marginBottom: "0.25rem" }}>
