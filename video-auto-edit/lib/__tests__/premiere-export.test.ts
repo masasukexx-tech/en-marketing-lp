@@ -12,7 +12,17 @@ const video = {
   fps: 30,
 };
 
-test("generateFcpxml embeds one asset-clip per timeline clip with frame-accurate offsets", () => {
+test("generateFcpxml emits a Final Cut Pro 7 XML (xmeml) sequence, not modern FCPXML", () => {
+  const xml = generateFcpxml(video, [{ sourceStart: 0, sourceEnd: 5, timelineStart: 0, timelineEnd: 5 }]);
+
+  // Premiere Pro (verified against 26.0.1) only imports this legacy xmeml format via File > Import;
+  // it does not accept the modern <fcpxml> root at all.
+  assert.match(xml, /<!DOCTYPE xmeml>/);
+  assert.match(xml, /<xmeml version="4">/);
+  assert.doesNotMatch(xml, /<fcpxml/);
+});
+
+test("generateFcpxml converts source/timeline seconds to frame counts for both video and audio tracks", () => {
   const clips = [
     { sourceStart: 0, sourceEnd: 5, timelineStart: 0, timelineEnd: 5 },
     { sourceStart: 7, sourceEnd: 10, timelineStart: 5, timelineEnd: 8 },
@@ -20,20 +30,32 @@ test("generateFcpxml embeds one asset-clip per timeline clip with frame-accurate
 
   const xml = generateFcpxml(video, clips);
 
-  assert.match(xml, /<fcpxml version="1.10">/);
-  assert.match(xml, /frameDuration="1\/30s"/);
-  assert.match(xml, /src="file:\/\/\/storage\/projects\/p1\/original\/sample\.mp4"/);
-  // clip 1: offset 0s, duration 5*30=150 frames, start 0
-  assert.match(xml, /offset="0\/30s" duration="150\/30s" start="0\/30s"/);
-  // clip 2: offset 5*30=150 frames, duration 3*30=90 frames, start 7*30=210 frames
-  assert.match(xml, /offset="150\/30s" duration="90\/30s" start="210\/30s"/);
+  assert.match(xml, /<timebase>30<\/timebase>/);
+  // clip 1: in=0, out=150, start=0, end=150 (frames at 30fps)
+  assert.match(xml, /<start>0<\/start>\s*<end>150<\/end>\s*<in>0<\/in>\s*<out>150<\/out>/);
+  // clip 2: source 7-10s -> in=210,out=300; timeline 5-8s -> start=150,end=240
+  assert.match(xml, /<start>150<\/start>\s*<end>240<\/end>\s*<in>210<\/in>\s*<out>300<\/out>/);
+
+  const videoClipCount = (xml.match(/<clipitem id="clipitem-v/g) ?? []).length;
+  const audioClipCount = (xml.match(/<clipitem id="clipitem-a/g) ?? []).length;
+  assert.equal(videoClipCount, 2);
+  assert.equal(audioClipCount, 2);
 });
 
-test("generateFcpxml never references a <title>/<effect> template (Premiere rejects the whole file if the Motion template UID can't be resolved)", () => {
-  const xml = generateFcpxml(video, [{ sourceStart: 0, sourceEnd: 5, timelineStart: 0, timelineEnd: 5 }]);
+test("generateFcpxml only fully defines the <file> once and reuses the id afterwards", () => {
+  const clips = [
+    { sourceStart: 0, sourceEnd: 5, timelineStart: 0, timelineEnd: 5 },
+    { sourceStart: 5, sourceEnd: 10, timelineStart: 5, timelineEnd: 10 },
+  ];
 
-  assert.doesNotMatch(xml, /<title/);
-  assert.doesNotMatch(xml, /<effect/);
+  const xml = generateFcpxml(video, clips);
+
+  const fullFileDefs = (xml.match(/<file id="file-1">/g) ?? []).length;
+  const bareFileRefs = (xml.match(/<file id="file-1"\/>/g) ?? []).length;
+
+  assert.equal(fullFileDefs, 1);
+  // 1 video clip reuses the ref (clip 2) + 2 audio clips (both) = 3 bare refs
+  assert.equal(bareFileRefs, 3);
 });
 
 test("generateFcpxml escapes special XML characters in the filename", () => {

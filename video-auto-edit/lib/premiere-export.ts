@@ -13,7 +13,7 @@ export interface FcpxmlCaption {
 
 export interface FcpxmlVideoInfo {
   filename: string;
-  /** ローカルの絶対パス。file:// URL に変換して media-rep の src に使う */
+  /** ローカルの絶対パス。file:// URL に変換して pathurl に使う */
   absolutePath: string;
   durationSec: number;
   width: number;
@@ -31,65 +31,102 @@ function escapeXml(value: string): string {
 }
 
 function toFileUrl(absolutePath: string): string {
-  return absolutePath.startsWith("file://") ? absolutePath : `file://${absolutePath}`;
+  const encodedPath = absolutePath
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  return `file://localhost${encodedPath}`;
 }
 
-/** 秒数を FCPXML の有理数タイムコード形式 (frames/fps s) へ変換する */
-function toRationalTime(sec: number, fps: number): string {
-  const frames = Math.max(0, Math.round(sec * fps));
-  return `${frames}/${fps}s`;
+function toFrames(sec: number, fps: number): number {
+  return Math.max(0, Math.round(sec * fps));
 }
 
 /**
- * カット後タイムラインを Final Cut Pro XML (FCPXML 1.10) として書き出す。
- * Premiere Pro は FCPXML の公式importに対応している（design doc §4）。
- * 映像/音声はカット済み区間ごとの asset-clip として出力する。
+ * カット後タイムラインを Final Cut Pro 7 形式のXML（通称XMEML、拡張子 .xml）として書き出す。
  *
- * キャプションは意図的にFCPXMLへ埋め込まない: FCPXMLの<title>はFinal Cut Pro/Motion付属の
- * テンプレート(.moti)への有効な参照(uid)が無いと「サポートされていないファイル形式」として
- * インポート全体が拒否される。Premiereでは持っていない/解決できないテンプレートのため、
- * 代わりに generateSrt() の出力を単独でインポートしてもらう（Premiereのネイティブ字幕トラックとして
- * 認識される、より確実な方法）。
+ * 当初はモダンなFCPXML(拡張子 .fcpxml)を生成していたが、実機のPremiere Pro (26.0.1) で検証した結果、
+ * Premiere Proは「ファイル > 読み込み」のFCPXML importに対応しておらず、最新のFCPXMLでは
+ * ファイル選択自体ができない（サポート対象外の拡張子として扱われる）ことが判明した。
+ * Adobe公式ヘルプでも、PremiereがネイティブでimportできるのはFinal Cut Pro 7形式のXML
+ * (このXMEML)のみで、Final Cut Pro X以降のFCPXMLを直接読み込むには別途変換ツールが必要、
+ * と案内されている。無料構成のまま完結させるため、最初からこのXMEML形式で書き出す。
+ *
+ * キャプションはこのXMLへ埋め込まない。字幕は generateSrt() の出力を単独でPremiereに
+ * インポートすることで、ネイティブの字幕トラックとして追加できる。
  */
 export function generateFcpxml(video: FcpxmlVideoInfo, clips: FcpxmlClip[]): string {
   const fps = Math.max(1, Math.round(video.fps));
-  const t = (sec: number) => toRationalTime(sec, fps);
+  const isNtsc = Math.abs(video.fps - fps) > 0.001;
+  const ntscFlag = isNtsc ? "TRUE" : "FALSE";
+  const rateXml = `<rate><timebase>${fps}</timebase><ntsc>${ntscFlag}</ntsc></rate>`;
+
   const fileUrl = toFileUrl(video.absolutePath);
+  const totalSourceFrames = toFrames(video.durationSec, fps);
+  const totalTimelineFrames = clips.length ? toFrames(clips[clips.length - 1]!.timelineEnd, fps) : 0;
 
-  const assetClipsXml = clips
-    .map((clip, i) => {
-      const clipDuration = t(clip.sourceEnd - clip.sourceStart);
-      const clipStart = t(clip.sourceStart);
-      const clipOffset = t(clip.timelineStart);
+  function fileRefXml(isFirst: boolean): string {
+    if (!isFirst) return `<file id="file-1"/>`;
+    return `<file id="file-1">
+              <name>${escapeXml(video.filename)}</name>
+              <pathurl>${escapeXml(fileUrl)}</pathurl>
+              ${rateXml}
+              <duration>${totalSourceFrames}</duration>
+              <media>
+                <video>
+                  <samplecharacteristics>
+                    <width>${video.width}</width>
+                    <height>${video.height}</height>
+                  </samplecharacteristics>
+                </video>
+                <audio>
+                  <channelcount>2</channelcount>
+                </audio>
+              </media>
+            </file>`;
+  }
 
-      return `        <asset-clip name="${escapeXml(video.filename)}-${i + 1}" ref="r2" offset="${clipOffset}" duration="${clipDuration}" start="${clipStart}" format="r1" tcFormat="NDF"/>`;
-    })
-    .join("\n");
+  function clipItemXml(clip: FcpxmlClip, id: string, isFirstFileRef: boolean): string {
+    const inFrame = toFrames(clip.sourceStart, fps);
+    const outFrame = toFrames(clip.sourceEnd, fps);
+    const startFrame = toFrames(clip.timelineStart, fps);
+    const endFrame = toFrames(clip.timelineEnd, fps);
+    return `          <clipitem id="${id}">
+            <name>${escapeXml(video.filename)}</name>
+            <duration>${totalSourceFrames}</duration>
+            ${rateXml}
+            <start>${startFrame}</start>
+            <end>${endFrame}</end>
+            <in>${inFrame}</in>
+            <out>${outFrame}</out>
+            ${fileRefXml(isFirstFileRef)}
+          </clipitem>`;
+  }
 
-  const totalDuration = clips.length ? t(clips[clips.length - 1]!.timelineEnd) : "0s";
-  const assetDuration = t(video.durationSec);
+  const videoClipItems = clips.map((clip, i) => clipItemXml(clip, `clipitem-v${i + 1}`, i === 0)).join("\n");
+  const audioClipItems = clips.map((clip, i) => clipItemXml(clip, `clipitem-a${i + 1}`, false)).join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE fcpxml>
-<fcpxml version="1.10">
-  <resources>
-    <format id="r1" name="FFVideoFormat${video.width}x${video.height}p${fps}" frameDuration="1/${fps}s" width="${video.width}" height="${video.height}"/>
-    <asset id="r2" name="${escapeXml(video.filename)}" start="0s" duration="${assetDuration}" hasVideo="1" hasAudio="1" format="r1">
-      <media-rep kind="original-media" src="${escapeXml(fileUrl)}"/>
-    </asset>
-  </resources>
-  <library>
-    <event name="AI Auto Edit">
-      <project name="${escapeXml(video.filename)}">
-        <sequence format="r1" duration="${totalDuration}" tcStart="0s" tcFormat="NDF">
-          <spine>
-${assetClipsXml}
-          </spine>
-        </sequence>
-      </project>
-    </event>
-  </library>
-</fcpxml>`;
+<!DOCTYPE xmeml>
+<xmeml version="4">
+  <sequence>
+    <name>${escapeXml(video.filename)}</name>
+    <duration>${totalTimelineFrames}</duration>
+    ${rateXml}
+    <media>
+      <video>
+        <track>
+${videoClipItems}
+        </track>
+      </video>
+      <audio>
+        <track>
+${audioClipItems}
+        </track>
+      </audio>
+    </media>
+  </sequence>
+</xmeml>`;
 }
 
 function srtTimestamp(sec: number): string {

@@ -9,7 +9,7 @@ import { projectPaths } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
-/** FCPXML + SRT を生成し ZIP でダウンロードさせる（design doc §4, §5-16〜17） */
+/** Premiere Pro向けXML(Final Cut Pro 7形式) + SRT を生成し ZIP でダウンロードさせる（design doc §4, §5-16〜17） */
 export async function GET(request: NextRequest) {
   const videoAssetId = request.nextUrl.searchParams.get("videoAssetId");
   if (!videoAssetId) {
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "video asset not found" }, { status: 404 });
   }
 
-  const fcpxml = generateFcpxml(
+  const premiereXml = generateFcpxml(
     {
       filename: videoAsset.filename,
       absolutePath: videoAsset.storagePath,
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
   const srt = generateSrt(videoAsset.captions);
 
   // プロジェクト内に複数動画がある場合に書き出しファイルが上書きされないよう、videoAssetIdでファイル名を分ける
-  await fs.writeFile(projectPaths.premiere(videoAsset.projectId, `${videoAsset.id}.fcpxml`), fcpxml, "utf-8");
+  await fs.writeFile(projectPaths.premiere(videoAsset.projectId, `${videoAsset.id}.xml`), premiereXml, "utf-8");
   await fs.writeFile(projectPaths.captions(videoAsset.projectId, `${videoAsset.id}.srt`), srt, "utf-8");
 
   const archive = archiver("zip", { zlib: { level: 9 } });
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     archive.on("error", reject);
   });
 
-  archive.append(fcpxml, { name: "premiere/project.fcpxml" });
+  archive.append(premiereXml, { name: "premiere/project.xml" });
   archive.append(srt, { name: "captions/captions.srt" });
   await archive.finalize();
   await finished;

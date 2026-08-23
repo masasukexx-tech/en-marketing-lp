@@ -2,7 +2,9 @@
 
 AI動画自動編集システムの初期スキャフォールド（完全無料構成版）。設計の全文は [`../docs/ai-video-auto-edit-design.md`](../docs/ai-video-auto-edit-design.md) を参照してください。
 
-クラウド従量課金ゼロで、素材アップロード → 文字起こし（faster-whisper）→ 無音/フィラー/言い直しの自動カット判定 → 確認画面での復元 → Premiere Pro向けFCPXML/SRT書き出し、までをローカルPC上で完結させます。
+クラウド従量課金ゼロで、素材アップロード → 文字起こし（faster-whisper）→ 無音/フィラー/言い直しの自動カット判定 → 確認画面での復元 → Premiere Pro向けXML/SRT書き出し、までをローカルPC上で完結させます。
+
+> **設計書からの変更点**: 設計書ではPremiere向け書き出し形式として「FCPXML」を想定していましたが、実機のPremiere Pro (26.0.1) で検証した結果、**Premiere ProはモダンなFCPXML(Final Cut Pro X形式)をそもそも読み込めない**（Adobe公式ヘルプでも既知の制限として案内されている、長年未解決の問題）ことが判明しました。そのため、Premiereが実際に読み込める**Final Cut Pro 7形式のXML（拡張子`.xml`、通称XMEML）**を書き出す方式に変更しています。詳しくは「既知の制約」を参照してください。
 
 ## セットアップ
 
@@ -35,7 +37,7 @@ npm run dev
 
 ## テスト
 
-外部依存（ffmpeg/faster-whisper等）を必要としない純粋なロジック（`lib/timeline.ts`, `lib/ffmpeg.ts`のパーサー, `lib/edit-decision.ts`のカット判定, `lib/premiere-export.ts`のFCPXML/SRT生成）はNode組み込みのテストランナーで実行できます。追加のnpmパッケージは不要です（Node 22.6+が必要）。
+外部依存（ffmpeg/faster-whisper等）を必要としない純粋なロジック（`lib/timeline.ts`, `lib/ffmpeg.ts`のパーサー, `lib/edit-decision.ts`のカット判定, `lib/premiere-export.ts`のPremiere向けXML/SRT生成）はNode組み込みのテストランナーで実行できます。追加のnpmパッケージは不要です（Node 22.6+が必要）。
 
 ```bash
 npm test
@@ -62,14 +64,14 @@ video-auto-edit/
 │     ├─ videos/[id]/route.ts           # 確認画面用データ取得・復元操作(PATCH)
 │     ├─ videos/[id]/progress/route.ts  # 処理進捗のポーリング取得（%表示用）
 │     ├─ videos/[id]/source/route.ts    # 元動画のRange対応ストリーミング配信（プレビュー再生用）
-│     └─ export/route.ts                # FCPXML/SRT生成・ZIPダウンロード
+│     └─ export/route.ts                # Premiere向けXML(XMEML)/SRT生成・ZIPダウンロード
 ├─ lib/
 │  ├─ ffmpeg.ts                   # ffprobe/ffmpeg/silencedetectラッパー
 │  ├─ progress.ts                 # 処理進捗(stage/%)の読み書き・全体%への変換
 │  ├─ edit-decision.ts            # 無音/フィラー/言い直し判定の統合ロジック
 │  ├─ rebuild.ts                  # EditDecision→TimelineClip/Captionの再計算（復元操作でも使用）
 │  ├─ timeline.ts                 # TimelineClip組み立て・mapSourceToTimeline()
-│  ├─ premiere-export.ts          # FCPXML/SRT生成
+│  ├─ premiere-export.ts          # Final Cut Pro 7形式XML(XMEML)/SRT生成（Premiere Proが実際に読み込める形式）
 │  ├─ db.ts                       # Prismaクライアント
 │  └─ storage.ts                  # storage/ 配下のパス管理
 ├─ scripts/
@@ -99,7 +101,7 @@ video-auto-edit/
 | 13 | Caption生成・同期 | ✅ |
 | 14 | 確認画面（プレビュー・復元機能） | ✅ 動画プレビュー＋区間ハイライトバー（クリックでシーク）・復元操作あり |
 | 15 | SRT生成 | ✅ |
-| 16 | FCPXML生成 | ✅ 実際のPremiere Proで読み込み確認済み（`ファイル > 読み込み`から）。キャプションはFCPXMLに含めず、SRT単独インポートに一本化（下記参照） |
+| 16 | Premiere向けXML生成 | ✅ 実際のPremiere Pro 26.0.1で読み込み確認中（`ファイル > 読み込み`から。設計書のFCPXMLはPremiereが読めないため、Final Cut Pro 7形式XMLへ変更）。キャプションはXMLに含めず、SRT単独インポートに一本化（下記参照） |
 | 17 | ZIP Export | ✅ |
 | 18 | build / lint / typecheck | ⚠️ typecheckはスタブ型で検証済み・純粋ロジックは`npm test`で自動テスト済み（16件pass）。`npm install`が組織ポリシーでブロックされ実パッケージでのbuild/lintは未実行 |
 | 19 | 実際のEN案件動画でのテスト | ❌ 未実施（ffmpeg/faster-whisperが無い環境のため。本番同等の実行環境が必要） |
@@ -113,7 +115,8 @@ video-auto-edit/
 
 ## 既知の制約
 
-- この開発環境には `ffmpeg`/`ffprobe`、Python の `faster-whisper`/`fugashi`/`rapidfuzz`、`npm install`（組織ポリシーで registry.npmjs.org / apt リポジトリへのアクセスがブロックされる）がいずれも無いため、コード自体は実際のユーザーによる動作確認（フルセットアップ済みの手元Mac）を経て修正を重ねています。`lib/`配下の純粋ロジックはNode組み込みテストランナーで実行・pass確認済みです（`npm test`）。
-- **FCPXMLにはキャプションを含めません**。当初は`<title>`要素で字幕を焼き込む実装でしたが、Final Cut Pro/Motion付属テンプレート(.moti)への有効な参照が無いとPremiere Pro側が「サポートされていないファイル形式です」としてFCPXML全体のインポートを拒否することが実機検証で判明したため撤去しました。字幕は`captions.srt`を**単独で**`ファイル > 読み込み`することで、Premiereのネイティブ字幕トラックとして追加してください（`project.fcpxml`をインポートするのとは別操作です）。
-- **`project.fcpxml`は必ずメニューバーの`ファイル > 読み込み`から開いてください**。プロジェクトパネルの「メディアを読み込む」ボタンは動画/音声などのメディアファイル専用で、FCPXML(プロジェクト形式)は選択できてもグレーアウトしたままになります。
+- この開発環境には `ffmpeg`/`ffprobe`、Python の `faster-whisper`/`fugashi`/`rapidfuzz`、`npm install`（組織ポリシーで registry.npmjs.org / apt リポジトリへのアクセスがブロックされる）がいずれも無いため、コード自体は実際のユーザーによる動作確認（フルセットアップ済みの手元Mac、Premiere Pro 26.0.1）を経て修正を重ねています。`lib/`配下の純粋ロジックはNode組み込みテストランナーで実行・pass確認済みです（`npm test`）。
+- **Premiere ProはモダンなFCPXML(Final Cut Pro X形式)をそもそも読み込めません。** 当初はFCPXML(拡張子`.fcpxml`)を生成していましたが、実機検証で「ファイル > 読み込み」ダイアログ上で`.fcpxml`ファイルがそもそも選択できない（グレーアウトする）ことが判明しました。調べたところ、これは既知のPremiere Pro側の仕様上の制限で、Adobe公式ヘルプでも「PremiereがネイティブでimportできるのはFinal Cut Pro 7形式のXMLのみ」と案内されています（[Adobeヘルプ: Final Cut Proからの移行](https://helpx.adobe.com/premiere/desktop/organize-media/import-files/migrate-from-final-cut-pro-x.html)）。そのため `lib/premiere-export.ts` は最初からFinal Cut Pro 7形式のXML（通称XMEML、拡張子`.xml`）を生成するように変更しました。
+- **キャプションはXMLに含めません**。当初は`<title>`要素で字幕を焼き込む実装でしたが、Final Cut Pro/Motion付属テンプレート(.moti)への有効な参照が無いとインポートが拒否される問題もあり、そもそも書き出し形式自体を変更したことも踏まえて撤去しました。字幕は`captions.srt`を**単独で**`ファイル > 読み込み`することで、Premiereのネイティブ字幕トラックとして追加してください（`project.xml`をインポートするのとは別操作です）。
+- **`project.xml`は必ずメニューバーの`ファイル > 読み込み`から開いてください**。プロジェクトパネルの「メディアを読み込む」ボタンは動画/音声などのメディアファイル専用で、プロジェクト形式のXMLは選択できてもグレーアウトしたままになります。
 - フィラー辞書・言い直しトリガー語・confidence閾値は設計書のルールをそのまま初期値化した簡易版です。誤判定が多い場合は `lib/edit-decision.ts` の `CUT_CONFIDENCE_THRESHOLD` や `scripts/analyze_text.py` の辞書を調整してください。
