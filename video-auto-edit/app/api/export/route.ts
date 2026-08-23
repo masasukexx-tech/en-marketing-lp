@@ -41,8 +41,9 @@ export async function GET(request: NextRequest) {
   );
   const srt = generateSrt(videoAsset.captions);
 
-  await fs.writeFile(projectPaths.premiere(videoAsset.projectId, "project.fcpxml"), fcpxml, "utf-8");
-  await fs.writeFile(projectPaths.captions(videoAsset.projectId, "captions.srt"), srt, "utf-8");
+  // プロジェクト内に複数動画がある場合に書き出しファイルが上書きされないよう、videoAssetIdでファイル名を分ける
+  await fs.writeFile(projectPaths.premiere(videoAsset.projectId, `${videoAsset.id}.fcpxml`), fcpxml, "utf-8");
+  await fs.writeFile(projectPaths.captions(videoAsset.projectId, `${videoAsset.id}.srt`), srt, "utf-8");
 
   const archive = archiver("zip", { zlib: { level: 9 } });
   const chunks: Buffer[] = [];

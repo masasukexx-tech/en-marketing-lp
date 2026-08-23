@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -35,7 +36,10 @@ export async function POST(request: NextRequest) {
 
   await ensureProjectDirs(project.id);
 
-  const destPath = projectPaths.original(project.id, file.name);
+  // 同一プロジェクトに同名ファイルを複数回アップロードしても上書きされないよう、
+  // 保存パスにはユニークな接頭辞を付ける（表示用の filename は元のファイル名のまま保持）
+  const storedFilename = `${randomUUID()}-${file.name}`;
+  const destPath = projectPaths.original(project.id, storedFilename);
   const buffer = Buffer.from(await file.arrayBuffer());
   await fs.writeFile(destPath, buffer);
 
