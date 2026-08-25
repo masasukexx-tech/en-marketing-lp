@@ -25,7 +25,7 @@ def slide_01_cover():
 
     # right side: hero photo placeholder, Z-gen web-first feel
     px_, py_, pw_, ph_ = split_x + 0.55, 0.85, d.PAGE_W - split_x - 0.55 - 0.62, 5.6
-    d.photo_placeholder(s, px_, py_, pw_, ph_, 1, "通学路・友達と並んで歩く高校生", d.INK)
+    d.photo_placeholder(s, px_, py_, pw_, ph_, 1, "通学路・友達と並んで歩く高校生", d.INK, big=True)
     d.chip(s, px_ + 0.2, py_ + 0.2, 2.1, 0.4, "18 YEARS OLD", d.INK, size=10.5, spacing=30)
 
     s.line(0.62, d.FOOTER_Y, d.PAGE_W - 0.62, d.FOOTER_Y, color=d.INK, width=1.0)
@@ -56,17 +56,17 @@ def slide_02_toc():
     s = SceneSlide("toc")
     d.base(s)
     d.header(s, "INDEX", "目次 ／ 提案の全体像", d.ORANGE)
-    d.h1(s, d.MARGIN_X, 0.92, 8, 1.0, ["認知から、選択へ。"], size=30)
+    d.h1(s, d.MARGIN_X, 0.9, 8, 1.0, ["認知から、選択へ。"], size=d.SIZE_TITLE)
     d.body(s, d.MARGIN_X, 1.62, 9.5, 0.5,
            "TikTok → Instagram → YouTube → Web / Real の導線で、18歳の心理状態を段階的に動かす設計。",
            size=12)
 
-    x0, y0 = d.MARGIN_X, 2.55
+    x0, y0 = d.MARGIN_X, 2.3
     w = d.CONTENT_W
     n = len(TOC_ITEMS)
     gap = 0.1
     cw = (w - gap * (n - 1)) / n
-    ch = 0.95
+    ch = 1.65
     for i, (num, en, jp, color) in enumerate(TOC_ITEMS):
         cx = x0 + i * (cw + gap)
         is_last = (i == n - 1)
@@ -74,20 +74,39 @@ def slide_02_toc():
                  adj={"adj1": "50000", "adj2": "35000"} if not is_last else None, name=f"Nav{i}")
         text_x = cx + 0.34
         text_w = cw - 0.34 - 0.1
-        s.text(text_x, y0 + 0.1, text_w, 0.32, [
-            {"runs": [{"text": num, "size": 17, "bold": True, "color": d.WHITE, "font": d.EN}]},
+        s.text(text_x, y0 + 0.2, text_w, 0.4, [
+            {"runs": [{"text": num, "size": 22, "bold": True, "color": d.WHITE, "font": d.EN}]},
         ], anchor="t")
-        s.text(text_x, y0 + 0.42, text_w, 0.5, [
-            {"runs": [{"text": en, "size": 12.5, "bold": True, "color": d.WHITE, "font": d.EN, "spacing": 10}]},
+        s.text(text_x, y0 + 0.72, text_w, 0.6, [
+            {"runs": [{"text": en, "size": 15, "bold": True, "color": d.WHITE, "font": d.EN, "spacing": 10}]},
         ], anchor="t")
-        s.text(cx, y0 + ch + 0.12, cw, 0.6, [
-            {"align": "c", "runs": [{"text": jp, "size": 10.5, "bold": False, "color": d.INK, "font": d.JP}]},
+        s.text(cx, y0 + ch + 0.16, cw, 0.5, [
+            {"align": "c", "runs": [{"text": jp, "size": 12, "bold": True, "color": d.INK, "font": d.JP}]},
         ], anchor="t")
 
-    s.line(x0, 4.35, x0 + w, 4.35, color=d.HAIRLINE, width=1.0)
-    d.body(s, x0, 4.55, w, 0.6,
+    rule_y = y0 + ch + 0.85
+    s.line(x0, rule_y, x0 + w, rule_y, color=d.HAIRLINE, width=1.0)
+    d.body(s, x0, rule_y + 0.22, w, 0.6,
            "PHASE1〜3（TikTok / Instagram / YouTube）で認知と理解を積み上げ、PHASE4（Web / Real）で行動へつなぐ。全体設計は Roadmap（P.19）、指標は KPI（P.21）に整理。",
-           size=11.5, line_spacing=155)
+           size=14, line_spacing=160)
+
+    phases = [
+        ("PHASE 1-3", "認知・共感・理解を積み上げる", d.ORANGE),
+        ("PHASE 4", "Web / Real で行動へつなぐ", d.CYAN),
+        ("GOAL", "採用・進路選択", d.PURPLE),
+    ]
+    py = rule_y + 1.1
+    pw = (w - 0.3 * 2) / 3
+    for i, (tag, desc, color) in enumerate(phases):
+        px = x0 + i * (pw + 0.3)
+        s.rect(px, py, pw, 0.9, fill=d.WHITE, line=color, line_w=d.BORDER_W, name=f"PhaseNote{i}")
+        s.rect(px, py, 0.08, 0.9, fill=color, name=f"PhaseAccent{i}")
+        s.text(px + 0.26, py + 0.14, pw - 0.4, 0.3, [
+            {"runs": [{"text": tag, "size": 13, "bold": True, "color": color, "font": d.EN, "spacing": 20}]},
+        ], anchor="t")
+        s.text(px + 0.26, py + 0.46, pw - 0.4, 0.36, [
+            {"runs": [{"text": desc, "size": 12, "bold": True, "color": d.INK, "font": d.JP}]},
+        ], anchor="t")
 
     d.footer(s, 2, d.ORANGE)
     return s

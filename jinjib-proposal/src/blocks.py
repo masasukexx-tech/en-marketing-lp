@@ -6,11 +6,13 @@ import design as d
 
 
 def subhead(scene, x, y, w, label_en, label_jp, accent):
-    scene.rect(x, y, 0.16, 0.16, fill=accent, name="Subhead Mark")
-    scene.text(x + 0.24, y - 0.05, w - 0.24, 0.28, [
+    """LEVEL 3 subhead: a short EN tag plus a bold JP label sized well clear
+    of body copy (SIZE_SUBHEAD vs SIZE_BODY) so the hierarchy reads at a glance."""
+    scene.rect(x, y + 0.03, 0.2, 0.2, fill=accent, name="Subhead Mark")
+    scene.text(x + 0.32, y - 0.08, w - 0.32, 0.4, [
         {"runs": [
-            {"text": label_en + "  ", "size": 11, "bold": True, "color": accent, "font": d.EN, "spacing": 30},
-            {"text": label_jp, "size": 13, "bold": True, "color": d.INK, "font": d.JP},
+            {"text": label_en + "   ", "size": 10, "bold": True, "color": accent, "font": d.EN, "spacing": 40},
+            {"text": label_jp, "size": d.SIZE_SUBHEAD, "bold": True, "color": d.INK, "font": d.JP},
         ]},
     ], anchor="m")
 
@@ -37,6 +39,30 @@ def photo_row(scene, x, y, w, h, items, accent):
     pw = (w - gap * (n - 1)) / n
     for i, (num, caption) in enumerate(items):
         d.photo_placeholder(scene, x + i * (pw + gap), y, pw, h, num, caption, accent)
+
+
+def hero_photos(scene, x, y, w, h, items, accent):
+    """事例型: one dominant large photo instead of a row of equal small tiles.
+    1 item -> full-bleed single hero. 2 -> side-by-side big pair.
+    3 -> one large hero (58%) + two stacked support shots (42%)."""
+    n = len(items)
+    gap = 0.2
+    if n == 1:
+        num, cap = items[0]
+        d.photo_placeholder(scene, x, y, w, h, num, cap, accent, big=True)
+        return
+    if n == 2:
+        pw = (w - gap) / 2
+        for i, (num, cap) in enumerate(items):
+            d.photo_placeholder(scene, x + i * (pw + gap), y, pw, h, num, cap, accent, big=True)
+        return
+    hero_w = w * 0.58 - gap / 2
+    side_w = w - gap - hero_w
+    num0, cap0 = items[0]
+    d.photo_placeholder(scene, x, y, hero_w, h, num0, cap0, accent, big=True)
+    side_h = (h - gap) / 2
+    for i, (num, cap) in enumerate(items[1:3]):
+        d.photo_placeholder(scene, x + hero_w + gap, y + i * (side_h + gap), side_w, side_h, num, cap, accent)
 
 
 def storyboard_4(scene, x, y, w, phone_h, steps, accent, images_start):

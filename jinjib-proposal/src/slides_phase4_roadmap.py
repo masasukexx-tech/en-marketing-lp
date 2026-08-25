@@ -7,7 +7,7 @@ def slide_18_phase4():
     s = SceneSlide("phase4")
     d.base(s)
     d.header(s, "PHASE 4", "Web / Real ／ Goal", d.ORANGE)
-    d.h1(s, d.MARGIN_X, 0.85, 9, 0.55, ["知る・見るから、選ぶへ。"], size=22)
+    d.h1(s, d.MARGIN_X, 0.82, 9, 0.6, ["知る・見るから、選ぶへ。"], size=d.SIZE_TITLE)
 
     cols = [
         dict(tag="WEB", flow="見る → 探す", accent=d.CYAN, items=[
@@ -37,7 +37,7 @@ def slide_18_phase4():
                 iy += 0.62
         else:
             s.text(cx + 0.25, y0 + 1.6, cw - 0.5, 2.6, [
-                {"align": "c", "line_spacing": 132, "runs": [{"text": col["goal"], "size": 16, "bold": True, "color": d.INK, "font": d.JP}]},
+                {"align": "c", "line_spacing": 132, "runs": [{"text": col["goal"], "size": 20, "bold": True, "color": d.INK, "font": d.JP}]},
             ], anchor="m")
         if i < 2:
             s.line(cx + cw + 0.06, y0 + h0 / 2, cx + cw + 0.44, y0 + h0 / 2, color=d.ORANGE, width=1.75, arrow_end=True)
@@ -60,42 +60,46 @@ def slide_19_roadmap():
     s = SceneSlide("roadmap")
     d.base(s)
     d.header(s, "MARKETING ROADMAP", "認知から選択までの全体設計", d.ORANGE)
-    d.h1(s, d.MARGIN_X, 0.85, 9, 0.55, ["6つの段階で、心理状態を動かす。"], size=20)
+    d.h1(s, d.MARGIN_X, 0.82, 9.5, 0.6, ["6つの段階で、心理状態を動かす。"], size=d.SIZE_TITLE)
 
     n = len(ROADMAP)
     gap = 0.16
     cw = (d.CONTENT_W - gap * (n - 1)) / n
-    y0 = 1.85
+    y0 = 1.95
+    ch_h = 1.6
     for i, (name, accent, purpose, _) in enumerate(ROADMAP):
         cx = d.MARGIN_X + i * (cw + gap)
-        s.round_rect(cx, y0, cw, 1.15, fill=accent, radius=0.06, name=f"Ch{i}")
-        s.text(cx + 0.1, y0 + 0.12, cw - 0.2, 0.4, [
-            {"runs": [{"text": name, "size": 13.5, "bold": True, "color": d.WHITE, "font": d.EN, "spacing": 10}]},
+        s.round_rect(cx, y0, cw, ch_h, fill=accent, radius=0.05, name=f"Ch{i}")
+        s.text(cx + 0.14, y0 + 0.18, cw - 0.28, 0.5, [
+            {"runs": [{"text": name, "size": 17, "bold": True, "color": d.WHITE, "font": d.EN, "spacing": 10}]},
         ], anchor="t")
-        s.text(cx + 0.1, y0 + 0.5, cw - 0.2, 0.6, [
-            {"runs": [{"text": purpose, "size": 10, "bold": True, "color": d.WHITE, "font": d.JP}]},
+        s.text(cx + 0.14, y0 + 0.72, cw - 0.28, 0.8, [
+            {"runs": [{"text": purpose, "size": 12.5, "bold": True, "color": d.WHITE, "font": d.JP}]},
         ], anchor="t")
         if i < n - 1:
-            s.line(cx + cw + 0.02, y0 + 0.575, cx + cw + gap - 0.02, y0 + 0.575, color=d.INK, width=1.5, arrow_end=True)
+            s.line(cx + cw + 0.02, y0 + ch_h / 2, cx + cw + gap - 0.02, y0 + ch_h / 2, color=d.INK, width=1.5, arrow_end=True)
 
-    s.text(d.MARGIN_X, 3.25, d.CONTENT_W, 0.32, [
-        {"runs": [{"text": "PSYCHOLOGICAL SHIFT ／ 心理変化", "size": 11, "bold": True, "color": d.INK, "font": d.EN, "spacing": 30}]},
+    label_y = y0 + ch_h + 0.2
+    s.text(d.MARGIN_X, label_y, d.CONTENT_W, 0.34, [
+        {"runs": [{"text": "PSYCHOLOGICAL SHIFT ／ 心理変化", "size": 12, "bold": True, "color": d.INK, "font": d.EN, "spacing": 30}]},
     ], anchor="m")
-    y1 = 3.7
+    y1 = label_y + 0.42
+    mind_h = 1.15
     for i, (name, accent, purpose, mind) in enumerate(ROADMAP):
         cx = d.MARGIN_X + i * (cw + gap)
-        s.rect(cx, y1, cw, 0.85, fill=d.WHITE, line=accent, line_w=d.BORDER_W, name=f"Mind{i}")
-        s.text(cx + 0.1, y1, cw - 0.2, 0.85, [
-            {"align": "c", "line_spacing": 128, "runs": [{"text": mind, "size": 10.5, "bold": True, "color": d.INK, "font": d.JP}]},
+        s.rect(cx, y1, cw, mind_h, fill=d.WHITE, line=accent, line_w=d.BORDER_W, name=f"Mind{i}")
+        s.text(cx + 0.12, y1, cw - 0.24, mind_h, [
+            {"align": "c", "line_spacing": 132, "runs": [{"text": mind, "size": 13, "bold": True, "color": d.INK, "font": d.JP}]},
         ], anchor="m")
         if i < n - 1:
-            s.line(cx + cw + 0.02, y1 + 0.425, cx + cw + gap - 0.02, y1 + 0.425, color=d.INK, width=1.5, arrow_end=True)
+            s.line(cx + cw + 0.02, y1 + mind_h / 2, cx + cw + gap - 0.02, y1 + mind_h / 2, color=d.INK, width=1.5, arrow_end=True)
 
-    s.line(d.MARGIN_X, 4.85, d.MARGIN_X + d.CONTENT_W, 4.85, color=d.HAIRLINE, width=1.0)
-    d.body(s, d.MARGIN_X, 5.05, d.CONTENT_W, 1.4,
+    rule_y = y1 + mind_h + 0.24
+    s.line(d.MARGIN_X, rule_y, d.MARGIN_X + d.CONTENT_W, rule_y, color=d.HAIRLINE, width=1.0)
+    d.body(s, d.MARGIN_X, rule_y + 0.18, d.CONTENT_W, 0.85,
            "TikTok・Instagramで感情を動かし、YouTubeで理解を深め、Web／Realで実際の行動へつなぐ。\n"
            "各フェーズの目的は「フォロワー数」ではなく、次の心理状態へ進んだ人の数で測る（詳細はP.21 KPI）。",
-           size=12, line_spacing=160)
+           size=13.5, line_spacing=165)
 
     d.footer(s, 19, d.ORANGE)
     return s
@@ -115,7 +119,7 @@ def slide_20_schedule():
     s = SceneSlide("schedule")
     d.base(s)
     d.header(s, "12 MONTH ROADMAP", "12ヶ月スケジュール", d.ORANGE)
-    d.h1(s, d.MARGIN_X, 0.85, 9, 0.55, ["まず TikTok で検証し、段階的に拡張する。"], size=19)
+    d.h1(s, d.MARGIN_X, 0.8, 11.5, 0.75, ["まず TikTok で検証し、段階的に拡張する。"], size=28)
 
     y0 = 2.0
     n = len(SCHEDULE)
@@ -167,7 +171,7 @@ def slide_21_kpi():
     s = SceneSlide("kpi")
     d.base(s)
     d.header(s, "KPI", "計測指標", d.BLUE)
-    d.h1(s, d.MARGIN_X, 0.85, 9.5, 0.6, ["フォロワーではなく、次の心理状態へ進んだかを見る。"], size=18)
+    d.h1(s, d.MARGIN_X, 0.78, 11.8, 0.85, ["フォロワーではなく、次の心理状態へ進んだかを見る。"], size=25)
 
     groups = [
         ("TikTok", d.ORANGE, "認知・感情", ["再生数", "完視聴率", "平均視聴時間", "シェア", "コメント"]),

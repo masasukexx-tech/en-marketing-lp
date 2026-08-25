@@ -30,6 +30,21 @@ BORDER_W = 1.25  # pt — the ONE border weight used everywhere
 TOTAL_PAGES = 22
 BRAND_LABEL = "JINJIB ― 高卒採用・進路選択マーケティング戦略提案"
 
+# ---------------------------------------------------------------------------
+# Type scale — 4 explicit levels, used consistently on every page so the
+# viewer can tell at a glance what is a title vs. a subhead vs. body copy.
+#   LV1 TITLE   : the page title. Same size everywhere.
+#   LV2 MESSAGE : the single most important line/number on the page. Can be
+#                 bigger than the title when it IS the point of the page.
+#   LV3 SUBHEAD : section/card labels. Clearly bolder+bigger than body.
+#   LV4 BODY    : explanatory copy. Never bold, never subhead-sized.
+# ---------------------------------------------------------------------------
+SIZE_TITLE = 33
+SIZE_MESSAGE = 22
+SIZE_SUBHEAD = 16.5
+SIZE_BODY = 12.5
+SIZE_CAPTION = 9.5
+
 
 def header(scene, kicker_en, kicker_jp, accent, title=None, label_color=None, tick_color=None):
     """Top eyebrow used on all interior content pages (03-21): a short accent
@@ -37,10 +52,10 @@ def header(scene, kicker_en, kicker_jp, accent, title=None, label_color=None, ti
     label_color = label_color or INK
     tick_color = tick_color or accent
     scene.rect(MARGIN_X, TOP_Y, 0.32, 0.07, fill=tick_color, name="Kicker Tick")
-    scene.text(MARGIN_X + 0.42, TOP_Y - 0.1, 8.0, 0.34, [
+    scene.text(MARGIN_X + 0.42, TOP_Y - 0.1, 9.0, 0.34, [
         {"runs": [
-            {"text": kicker_en + "  ", "size": 12.5, "bold": True, "color": accent, "font": EN, "spacing": 60},
-            {"text": kicker_jp, "size": 11, "bold": True, "color": label_color, "font": JP, "spacing": 20},
+            {"text": kicker_en + "  ", "size": 12, "bold": True, "color": accent, "font": EN, "spacing": 60},
+            {"text": kicker_jp, "size": 10.5, "bold": True, "color": label_color, "font": JP, "spacing": 20},
         ]},
     ], anchor="m")
 
@@ -82,14 +97,17 @@ def outline_chip(scene, x, y, w, h, text, accent, size=10.5, font=EN, spacing=30
     ], anchor="m")
 
 
-def photo_placeholder(scene, x, y, w, h, num, caption, accent):
+def photo_placeholder(scene, x, y, w, h, num, caption, accent, big=False):
     scene.rect(x, y, w, h, fill=WHITE, line=accent, line_w=BORDER_W, name=f"Photo Frame {num}")
-    scene.line(x + 0.14, y + h - 0.44, x + w - 0.14, y + h - 0.44, color=accent, width=0.75)
-    scene.text(x + 0.14, y + h * 0.30, w - 0.28, h * 0.36, [
-        {"runs": [{"text": f"PHOTO {num:02d}", "size": min(20, h * 9), "bold": True, "color": accent, "font": EN, "spacing": 40}], "align": "c"},
+    label_size = min(40 if big else 20, min(w, h) * (7.5 if big else 9))
+    cap_size = min(13, label_size * 0.42)
+    bar_h = max(0.34, cap_size / 72 * 2.6)
+    scene.line(x + 0.16, y + h - bar_h, x + w - 0.16, y + h - bar_h, color=accent, width=0.75)
+    scene.text(x + 0.16, y + h * 0.30, w - 0.32, h * 0.55 - bar_h, [
+        {"runs": [{"text": f"PHOTO {num:02d}", "size": label_size, "bold": True, "color": accent, "font": EN, "spacing": 40}], "align": "c"},
     ], anchor="b")
-    scene.text(x + 0.14, y + h - 0.40, w - 0.28, 0.32, [
-        {"runs": [{"text": caption, "size": 9.5, "bold": False, "color": INK, "font": JP}], "align": "c"},
+    scene.text(x + 0.16, y + h - bar_h + 0.02, w - 0.32, bar_h - 0.06, [
+        {"runs": [{"text": caption, "size": cap_size, "bold": False, "color": INK, "font": JP}], "align": "c"},
     ], anchor="m")
 
 
@@ -159,13 +177,13 @@ def browser_frame(scene, x, y, w, h, accent, num, url="jinjib.co.jp/18-mirai", c
         ], anchor="t")
 
 
-def h1(scene, x, y, w, h, lines, color=INK, size=40, align="l", anchor="t", line_spacing=112):
+def h1(scene, x, y, w, h, lines, color=INK, size=SIZE_TITLE, align="l", anchor="t", line_spacing=112):
     paras = [{"align": align, "line_spacing": line_spacing,
               "runs": [{"text": ln, "size": size, "bold": True, "color": color, "font": JP}]} for ln in lines]
     scene.text(x, y, w, h, paras, anchor=anchor)
 
 
-def body(scene, x, y, w, h, text, size=12.5, color=INK, align="l", anchor="t", line_spacing=150, bold=False):
+def body(scene, x, y, w, h, text, size=SIZE_BODY, color=INK, align="l", anchor="t", line_spacing=150, bold=False):
     lines = text.split("\n")
     paras = [{"align": align, "line_spacing": line_spacing,
               "runs": [{"text": ln, "size": size, "bold": bold, "color": color, "font": JP}]} for ln in lines]

@@ -1,6 +1,6 @@
 import design as d
 from scene import SceneSlide
-from blocks import subhead, value_contrast, value_arrow, photo_row, storyboard_4, pairing_chips, quote_list, process_chevron
+from blocks import subhead, value_contrast, value_arrow, photo_row, hero_photos, storyboard_4, pairing_chips, quote_list, process_chevron
 
 CASES = [
     dict(
@@ -92,7 +92,7 @@ def page_a(case):
     s = SceneSlide(f"tiktok{case['num']}-a")
     d.base(s)
     d.header(s, f"TIKTOK CASE {case['num']:02d}", f"{case['category']} ／ アカウント設計・全体コンセプト", case["accent"])
-    d.h1(s, d.MARGIN_X, 0.9, 6.5, 1.3, case["title"], size=28, line_spacing=120)
+    d.h1(s, d.MARGIN_X, 0.9, 6.5, 1.3, case["title"], size=d.SIZE_TITLE, line_spacing=116)
 
     lx, lw = d.MARGIN_X, 6.35
     subhead(s, lx, 2.35, lw, "ACCOUNT DESIGN", "アカウント設計", case["accent"])
@@ -135,21 +135,22 @@ def page_b(case):
     d.base(s)
     d.header(s, f"TIKTOK CASE {case['num']:02d}", f"{case['category']} ／ 世界観・価値訴求ポイント", case["accent"])
 
-    subhead(s, d.MARGIN_X, 0.98, d.CONTENT_W, "WORLDVIEW", "世界観", case["accent"])
-    d.body(s, d.MARGIN_X, 1.3, d.CONTENT_W, 0.85, case["world"], size=11.5, line_spacing=148)
+    subhead(s, d.MARGIN_X, 0.92, d.CONTENT_W, "WORLDVIEW", "世界観", case["accent"])
+    d.body(s, d.MARGIN_X, 1.24, d.CONTENT_W, 0.6, case["world"], size=12, line_spacing=148)
 
-    photo_row(s, d.MARGIN_X, 2.35, d.CONTENT_W, 2.55, case["scenes"], case["accent"])
+    hero_photos(s, d.MARGIN_X, 1.92, d.CONTENT_W, 3.68, case["scenes"], case["accent"])
 
-    subhead(s, d.MARGIN_X, 5.28, d.CONTENT_W, "VALUE POINT", "価値訴求ポイント", case["accent"])
-    vy = 5.62
+    subhead(s, d.MARGIN_X, 5.82, d.CONTENT_W, "VALUE POINT", "価値訴求ポイント", case["accent"])
+    vy = 6.14
+    vw = d.CONTENT_W * 0.56
     if case["value"]["type"] == "contrast":
-        value_contrast(s, d.MARGIN_X, vy, d.CONTENT_W * 0.62, 0.46, case["value"]["left"], case["value"]["right"], case["accent"])
+        value_contrast(s, d.MARGIN_X, vy, vw, 0.5, case["value"]["left"], case["value"]["right"], case["accent"])
     else:
-        value_arrow(s, d.MARGIN_X, vy, d.CONTENT_W * 0.62, 0.46, case["value"]["left"], case["value"]["right"], case["accent"])
-    d.body(s, d.MARGIN_X + d.CONTENT_W * 0.68, vy - 0.03, d.CONTENT_W * 0.32, 0.6,
-           "届けたいのは「高卒でも成功できる」ではなく、\n選択肢そのものへの見方を変えること。" if case["num"] == 1 else
+        value_arrow(s, d.MARGIN_X, vy, vw, 0.5, case["value"]["left"], case["value"]["right"], case["accent"])
+    d.body(s, d.MARGIN_X + vw + 0.3, vy + 0.02, d.CONTENT_W - vw - 0.3, 0.5,
+           "届けたいのは「高卒でも成功できる」ではなく、選択肢そのものへの見方を変えること。" if case["num"] == 1 else
            "広告的な成功談ではなく、等身大の感情の動きを届ける。",
-           size=10, line_spacing=140)
+           size=10.5, line_spacing=140, anchor="m")
 
     d.footer(s, case["page_start"] + 1, case["accent"], section=f"TikTok 案{case['num']} {case['category']}")
     return s
@@ -159,7 +160,7 @@ def page_c(case):
     s = SceneSlide(f"tiktok{case['num']}-c")
     d.base(s)
     d.header(s, f"TIKTOK CASE {case['num']:02d}", f"{case['category']} ／ 勝つためのコンテンツ定義", case["accent"])
-    d.h1(s, d.MARGIN_X, 0.9, 9, 0.5, ["勝つためのコンテンツ定義"], size=22)
+    d.h1(s, d.MARGIN_X, 0.85, 9, 0.55, ["勝つためのコンテンツ定義"], size=d.SIZE_TITLE)
 
     pc = case["page_c"]
     if pc["kind"] == "storyboard":

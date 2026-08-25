@@ -1,6 +1,6 @@
 import design as d
 from scene import SceneSlide
-from blocks import subhead, value_contrast, photo_row, quote_list, pairing_chips
+from blocks import subhead, value_contrast, photo_row, hero_photos, quote_list, pairing_chips
 
 IG = d.PINK
 YT = d.BLUE
@@ -10,7 +10,7 @@ def slide_12_ig_account():
     s = SceneSlide("ig-12")
     d.base(s)
     d.header(s, "INSTAGRAM", "アカウント設計・全体コンセプト", IG)
-    d.h1(s, d.MARGIN_X, 0.9, 7, 1.0, ["18歳の、その後。"], size=30)
+    d.h1(s, d.MARGIN_X, 0.9, 7, 1.0, ["18歳の、その後。"], size=d.SIZE_TITLE)
 
     lx, lw = d.MARGIN_X, 6.3
     value_contrast(s, lx, 1.95, lw, 0.46, "TikTok ／ フィクション", "Instagram ／ リアル", IG)
@@ -35,9 +35,9 @@ def slide_12_ig_account():
            size=11.5, line_spacing=155, anchor="m")
 
     rx, ry, rw = 7.3, 0.95, d.PAGE_W - d.MARGIN_X - 7.3
-    d.phone_frame(s, rx + rw / 2 - 0.85, ry, 1.7, 3.5, IG, 15, app_label="Instagram", caption="プロフィール")
-    py = ry + 3.5 + 0.5
-    photo_row(s, rx, py, rw, 1.55, [(10, "高卒1年目 / 職場"), (11, "休日 / 友達と")], IG)
+    d.phone_frame(s, rx + rw / 2 - 0.85, ry, 1.7, 3.35, IG, 15, app_label="Instagram", caption="プロフィール")
+    py = ry + 3.35 + 0.55
+    hero_photos(s, rx, py, rw, 1.85, [(10, "高卒1年目 / 職場"), (11, "休日 / 友達と")], IG)
 
     d.footer(s, 12, IG, section="Instagram ／ 共感・自分事化")
     return s
@@ -48,30 +48,30 @@ def slide_13_ig_world():
     d.base(s)
     d.header(s, "INSTAGRAM", "世界観・価値訴求ポイント", IG)
 
-    subhead(s, d.MARGIN_X, 0.98, d.CONTENT_W, "WORLDVIEW", "世界観 ― 広告的な成功談は禁止", IG)
-    d.body(s, d.MARGIN_X, 1.3, d.CONTENT_W, 0.6,
+    subhead(s, d.MARGIN_X, 0.92, d.CONTENT_W, "WORLDVIEW", "世界観 ― 広告的な成功談は禁止", IG)
+    d.body(s, d.MARGIN_X, 1.24, d.CONTENT_W, 0.4,
            "仕事・休日・給与・友達・人間関係・後悔・成長。等身大のリアルだけを見せる。",
-           size=11.5)
+           size=12.5)
 
-    photo_row(s, d.MARGIN_X, 2.0, d.CONTENT_W * 0.56, 3.3,
-              [(12, "初任給 / 家族と食事"), (13, "職場 / 先輩と休憩")], IG)
+    hero_photos(s, d.MARGIN_X, 1.78, d.CONTENT_W * 0.58, 3.85,
+                [(12, "初任給 / 家族と食事"), (13, "職場 / 先輩と休憩")], IG)
 
-    qx = d.MARGIN_X + d.CONTENT_W * 0.56 + 0.3
-    qw = d.CONTENT_W * 0.44 - 0.3
-    subhead(s, qx, 1.98, qw, "VOICE", "リアルな声", IG)
-    quote_list(s, qx, 2.35, qw, [
+    qx = d.MARGIN_X + d.CONTENT_W * 0.58 + 0.32
+    qw = d.CONTENT_W * 0.42 - 0.32
+    subhead(s, qx, 1.78, qw, "VOICE", "リアルな声", IG)
+    quote_list(s, qx, 2.16, qw, [
         "大学に行った友達が羨ましかった。",
         "最初の半年は辞めたかった。",
         "初任給で親にご飯を奢った。",
         "高校生に戻っても同じ進路を選ぶ。",
-    ], IG, line_h=0.78)
+    ], IG, line_h=0.9)
 
-    subhead(s, d.MARGIN_X, 5.55, d.CONTENT_W, "VALUE POINT", "価値訴求ポイント", IG)
-    s.rect(d.MARGIN_X, 5.9, d.CONTENT_W, 0.85, fill=None, line=IG, line_w=d.BORDER_W, name="ValueBox")
-    s.rect(d.MARGIN_X, 5.9, 0.08, 0.85, fill=IG, name="ValueAccent")
-    d.body(s, d.MARGIN_X + 0.3, 5.9, d.CONTENT_W - 0.6, 0.85,
+    subhead(s, d.MARGIN_X, 5.9, d.CONTENT_W, "VALUE POINT", "価値訴求ポイント", IG)
+    s.rect(d.MARGIN_X, 6.22, d.CONTENT_W, 0.68, fill=None, line=IG, line_w=d.BORDER_W, name="ValueBox")
+    s.rect(d.MARGIN_X, 6.22, 0.08, 0.68, fill=IG, name="ValueAccent")
+    d.body(s, d.MARGIN_X + 0.3, 6.22, d.CONTENT_W - 0.6, 0.68,
            "制度の説明ではなく、「自分と数歳しか違わない人が、どう生きているか」を見せる。",
-           size=14, bold=True, anchor="m")
+           size=15, bold=True, anchor="m")
 
     d.footer(s, 13, IG, section="Instagram ／ 共感・自分事化")
     return s
@@ -81,7 +81,7 @@ def slide_14_ig_content():
     s = SceneSlide("ig-14")
     d.base(s)
     d.header(s, "INSTAGRAM", "勝つためのコンテンツ定義", IG)
-    d.h1(s, d.MARGIN_X, 0.9, 9, 0.5, ["Reels / Feed / Stories の使い分け"], size=20)
+    d.h1(s, d.MARGIN_X, 0.8, 11, 0.8, ["Reels / Feed / Stories の使い分け"], size=d.SIZE_TITLE)
 
     cols = [
         ("REELS", "人物との出会い", "新しい人物・仕事との\n出会いを届ける入口"),
@@ -108,8 +108,8 @@ def slide_14_ig_content():
     for i, txt in enumerate(series):
         d.outline_chip(s, d.MARGIN_X + i * (sw + 0.15), 3.93, sw, 0.46, txt, IG, size=9.5, font=d.JP, spacing=0)
 
-    py = 4.75
-    ph = 1.9
+    py = 4.55
+    ph = 2.35
     pw = ph / 2.06
     gap = 0.5
     total_w = pw * 3 + gap * 2
@@ -131,24 +131,24 @@ def slide_15_yt_account():
     s = SceneSlide("yt-15")
     d.base(s)
     d.header(s, "YOUTUBE", "アカウント設計・全体コンセプト", YT)
-    d.h1(s, d.MARGIN_X, 0.9, 6.6, 1.5, ["18歳から始まる、", "仕事のリアル。"], size=27, line_spacing=122)
+    d.h1(s, d.MARGIN_X, 0.88, 6.6, 1.5, ["18歳から始まる、", "仕事のリアル。"], size=d.SIZE_TITLE, line_spacing=116)
 
     lx, lw = d.MARGIN_X, 6.3
-    subhead(s, lx, 2.55, lw, "ACCOUNT DESIGN", "アカウント設計", YT)
-    d.body(s, lx, 2.88, lw, 1.1,
+    subhead(s, lx, 1.85, lw, "ACCOUNT DESIGN", "アカウント設計", YT)
+    d.body(s, lx, 2.2, lw, 1.1,
            "高校生が普段見られない「仕事・会社・働く人」を見せる。\n"
            "主役は採用担当者ではなく、若手社員と高校生、現場の人。",
-           size=12, line_spacing=150)
+           size=12.5, line_spacing=155)
 
-    subhead(s, lx, 4.15, lw, "CONCEPT", "全体コンセプト", YT)
-    d.body(s, lx, 4.48, lw, 0.6, "会社を知る前に、そこで働く人を知る。", size=15, bold=True)
+    subhead(s, lx, 3.35, lw, "CONCEPT", "全体コンセプト", YT)
+    d.body(s, lx, 3.7, lw, 0.6, "会社を知る前に、そこで働く人を知る。", size=18, bold=True)
 
-    subhead(s, lx, 5.35, lw, "WHY YOUTUBE", "TikTok / Instagramとの違い", YT)
-    d.body(s, lx, 5.68, lw, 1.1,
+    subhead(s, lx, 4.75, lw, "WHY YOUTUBE", "TikTok / Instagramとの違い", YT)
+    d.body(s, lx, 5.1, lw, 1.4,
            "短尺で興味を引いたTikTok、実在の先輩に共感したInstagramの先に、\n"
            "「10分間、じっくり見て理解する」場所を置く。採用担当者目線ではなく、\n"
            "同じ目線の若手社員が案内するドキュメンタリー形式で見せる。",
-           size=11, line_spacing=150)
+           size=12, line_spacing=155)
 
     rx, ry, rw = 7.35, 0.95, d.PAGE_W - d.MARGIN_X - 7.35
     d.pc_frame(s, rx, ry, rw, rw * 0.58, YT, 21, youtube=True, caption="若手社員ドキュメンタリー")
@@ -189,12 +189,12 @@ def slide_16_yt_world():
 
     px = d.MARGIN_X + d.CONTENT_W * 0.55 + 0.35
     pw = d.CONTENT_W * 0.45 - 0.35
-    photo_row(s, px, 2.68, pw, 2.6, [(15, "先輩との会話 / 昼休み")], YT)
+    hero_photos(s, px, 2.35, pw, 3.15, [(15, "先輩との会話 / 昼休み")], YT)
 
     subhead(s, d.MARGIN_X, 5.85, d.CONTENT_W, "VALUE POINT", "価値訴求ポイント", YT)
-    d.body(s, d.MARGIN_X, 6.16, d.CONTENT_W, 0.5,
+    d.body(s, d.MARGIN_X, 6.18, d.CONTENT_W, 0.6,
            "「高卒就職」ではなく、「この仕事なら自分にもできるかもしれない」へ。",
-           size=13, bold=True)
+           size=17, bold=True)
 
     d.footer(s, 16, YT, section="YouTube ／ 理解・深掘り")
     return s
@@ -204,7 +204,7 @@ def slide_17_yt_content():
     s = SceneSlide("yt-17")
     d.base(s)
     d.header(s, "YOUTUBE", "勝つためのコンテンツ定義", YT)
-    d.h1(s, d.MARGIN_X, 0.9, 9, 0.5, ["企業PRではなく、仕事発見コンテンツ。"], size=19)
+    d.h1(s, d.MARGIN_X, 0.8, 10.5, 0.8, ["企業PRではなく、仕事発見コンテンツ。"], size=d.SIZE_TITLE)
 
     pillars = [
         ("01", "18歳から働く人に密着"),
