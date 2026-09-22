@@ -1,12 +1,13 @@
 // 株式会社EN LinkedIn営業支援ツール - Prisma schema
-// SQLite はネイティブ enum 未対応のため、ステータス等は String + アプリ層(lib/status.ts, lib/schemas.ts)で検証する
+// ステータス等はString + アプリ層(lib/status.ts, lib/schemas.ts)で検証する
+// (元々SQLiteでの開発を想定していた名残。PostgreSQL移行後もアプリ層検証を維持し変更差分を最小化している)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

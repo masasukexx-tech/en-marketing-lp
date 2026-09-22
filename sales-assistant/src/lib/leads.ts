@@ -59,16 +59,16 @@ export async function listLeads(params: LeadListParams): Promise<LeadListResult>
     const priorities = params.priority.split(",").filter((p) => ["A", "B", "C"].includes(p));
     if (priorities.length) where.priority = { in: priorities };
   }
-  if (params.industry) where.industry = { contains: params.industry };
-  if (params.title) where.title = { contains: params.title };
+  if (params.industry) where.industry = { contains: params.industry, mode: "insensitive" };
+  if (params.title) where.title = { contains: params.title, mode: "insensitive" };
   if (params.minScore) where.overallScore = { gte: Number(params.minScore) };
   if (params.customerCandidate) where.isCustomerLead = true;
   if (params.partnerCandidate) where.isPartnerLead = true;
   if (params.q) {
     where.OR = [
-      { name: { contains: params.q } },
-      { companyName: { contains: params.q } },
-      { profileText: { contains: params.q } },
+      { name: { contains: params.q, mode: "insensitive" } },
+      { companyName: { contains: params.q, mode: "insensitive" } },
+      { profileText: { contains: params.q, mode: "insensitive" } },
     ];
   }
   if (params.registeredFrom || params.registeredTo) {

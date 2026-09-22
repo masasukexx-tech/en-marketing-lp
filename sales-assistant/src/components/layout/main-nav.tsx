@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, ListChecks, UserPlus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { LayoutDashboard, ListChecks, LogOut, UserPlus } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/", label: "ダッシュボード", icon: LayoutDashboard },
@@ -13,6 +15,16 @@ const NAV_ITEMS = [
 
 export function MainNav() {
   const pathname = usePathname();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      window.location.href = "/login";
+    }
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
@@ -47,6 +59,16 @@ export function MainNav() {
               </Link>
             );
           })}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-1 text-muted-foreground hover:text-foreground"
+            onClick={handleLogout}
+            disabled={loggingOut}
+          >
+            <LogOut className="h-4 w-4" />
+            ログアウト
+          </Button>
         </nav>
       </div>
     </header>
