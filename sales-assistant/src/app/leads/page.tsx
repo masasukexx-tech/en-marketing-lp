@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { listLeads, parseLeadListParams } from "@/lib/leads";
 import { LeadFilters } from "@/components/leads/lead-filters";
 import { LeadTable } from "@/components/leads/lead-table";
@@ -35,7 +36,9 @@ export default async function LeadsPage({
         </Button>
       </div>
 
-      <LeadFilters />
+      <Suspense fallback={null}>
+        <LeadFilters />
+      </Suspense>
       <LeadTable leads={leads} />
     </div>
   );

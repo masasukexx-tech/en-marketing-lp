@@ -1,0 +1,86 @@
+name: sales-assistant CI
+
+on:
+  push:
+    branches:
+      - main
+      - claude/determined-rubin-64ccjw
+    paths:
+      - "sales-assistant/**"
+      - ".github/workflows/sales-assistant-ci.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sales-assistant-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: sales-assistant
+
+env:
+  # テスト/ビルド用のSQLite DB。実データやシークレットは含まない。
+  DATABASE_URL: "file:./ci-test.db"
+
+jobs:
+  build-and-test:
+    name: lint / typecheck / test / build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Check for existing package-lock.json
+        id: lockfile
+        run: |
+          if [ -f package-lock.json ]; then
+            echo "existed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "existed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies (npm ci)
+        if: steps.lockfile.outputs.existed == 'true'
+        run: npm ci
+
+      - name: Install dependencies (npm install, generating package-lock.json)
+        if: steps.lockfile.outputs.existed == 'false'
+        run: npm install
+
+      - name: Commit generated package-lock.json
+        if: steps.lockfile.outputs.existed == 'false' && github.event_name == 'push'
+        run: |
+          if [ ! -f package-lock.json ]; then
+            echo "::warning::npm install did not produce a package-lock.json; skipping commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore(sales-assistant): add generated package-lock.json"
+          git push origin HEAD:"${GITHUB_REF#refs/heads/}" || echo "::warning::Could not push generated package-lock.json (will regenerate next run)."
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Prepare test SQLite database
+        run: npx prisma db push --skip-generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
+      - name: Build (production, mock mode — no ANTHROPIC_API_KEY set)
+        run: npm run build
