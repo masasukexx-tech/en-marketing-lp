@@ -1,0 +1,158 @@
+// 株式会社EN LinkedIn営業支援ツール - Prisma schema
+// SQLite はネイティブ enum 未対応のため、ステータス等は String + アプリ層(lib/status.ts, lib/schemas.ts)で検証する
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  industry  String?
+  website   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leads Lead[]
+}
+
+model Lead {
+  id            String  @id @default(cuid())
+  linkedinUrl   String
+  name          String
+  companyName   String
+  title         String?
+  industry      String?
+  location      String?
+  profileText   String? // プロフィール本文
+  workHistory   String? // 職歴
+  recentPosts   String? // 最近の投稿内容
+  notes         String? // 営業メモ（自由記述）
+  source        String? // 登録経路
+
+  // ステータス管理
+  status        String   @default("CANDIDATE")
+
+  // 最新の相性判定結果（一覧表示・絞り込み高速化のための非正規化カラム）
+  overallScore     Int?
+  customerScore    Int?
+  partnerScore     Int?
+  priority         String? // "A" | "B" | "C"
+  isCustomerLead   Boolean  @default(false)
+  isPartnerLead    Boolean  @default(false)
+
+  nextActionDate DateTime? // 次回対応日
+
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  analyses   ProfileAnalysis[]
+  messages   MessageDraft[]
+  activities Activity[]
+  followUps  FollowUp[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([overallScore])
+  @@index([nextActionDate])
+  @@index([createdAt])
+}
+
+model ProfileAnalysis {
+  id        String @id @default(cuid())
+  leadId    String
+  lead      Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  overallScore  Int
+  customerScore Int
+  partnerScore  Int
+  priority      String // "A" | "B" | "C"
+
+  reasons        String // JSON string[] 相性がよい理由
+  painPoints     String // JSON string[] 相手が抱えていそうな課題
+  valueProps     String // JSON string[] ENから提供できる価値
+  talkingPoints  String // JSON string[] 最初の会話で触れるべき話題
+  cautions       String? // 見送るべき場合の理由（あれば）
+
+  missingInfo    String? // JSON string[] 不足している情報
+  suggestedInfo  String? // JSON string[] 追加すると精度が上がる項目
+  genericWarning Boolean @default(false) // 汎用文面しか作れないことへの警告
+
+  rawResponse String // AIからの生JSON応答（監査用）
+  modelUsed   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+}
+
+model MessageDraft {
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  type    String // "CONNECTION_REQUEST" | "FIRST_DM"
+  variant String // 例: polite / friendly / collab, relationship / proposal / hypothesis
+  label   String // 表示用ラベル（例: "丁寧で落ち着いた文面"）
+
+  content         String // 生成された本文
+  editedContent   String? // ユーザーによる修正後の本文
+  profileSnapshot String // 生成時点で使用したプロフィール情報(JSON)
+
+  checkResult String? // 文面チェック結果(JSON)
+  adopted     Boolean @default(false) // 採用され、コピー/送信済みに使われたか
+
+  modelUsed String?
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+  @@index([type])
+}
+
+model Activity {
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  type       String // STATUS_CHANGE | NOTE | REPLY | MESSAGE_GENERATED | MESSAGE_COPIED | ANALYSIS
+  fromStatus String?
+  toStatus   String?
+  content    String? // 返信内容・メモなど自由記述
+
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+  @@index([type])
+}
+
+model FollowUp {
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  dueDate DateTime
+  memo    String?
+  done    Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([leadId])
+  @@index([dueDate])
+}
+
+model AppSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
