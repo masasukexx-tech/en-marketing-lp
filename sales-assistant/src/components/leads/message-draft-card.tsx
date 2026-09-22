@@ -82,6 +82,11 @@ export function MessageDraftCard({
           {check && "autoRevised" in check && check.autoRevised && (
             <Badge variant="secondary">文面チェックで自動修正済み</Badge>
           )}
+          {draft.modelUsed === "mock" && (
+            <Badge variant="outline" className="border-sky-700 text-sky-300">
+              モック生成
+            </Badge>
+          )}
         </div>
         <span className={cn("text-xs", text.length > limit ? "text-destructive" : "text-muted-foreground")}>
           {text.length} / {limit}文字

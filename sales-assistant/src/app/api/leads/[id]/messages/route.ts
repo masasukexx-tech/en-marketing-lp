@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { handleApiError, jsonError, parseJsonArray } from "@/lib/api-utils";
-import { checkLeadMessage, DEFAULT_MODEL, generateLeadMessages } from "@/lib/ai-service";
+import { checkLeadMessage, generateLeadMessages } from "@/lib/ai-service";
 import { logActivity } from "@/lib/activity";
 import { MESSAGE_TYPES } from "@/lib/status";
 import type { AnalysisSummaryForAI, LeadProfileForAI } from "@/types";
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         }
       : null;
 
-    const { result } = await generateLeadMessages({ lead: profile, type, analysis: analysisSummary });
+    const { result, modelUsed } = await generateLeadMessages({ lead: profile, type, analysis: analysisSummary });
 
     const drafts = [];
     let anyAutoRevised = false;
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           content: finalContent,
           profileSnapshot: JSON.stringify(profile),
           checkResult: JSON.stringify(checkPayload),
-          modelUsed: DEFAULT_MODEL,
+          modelUsed,
         },
       });
       drafts.push(draft);

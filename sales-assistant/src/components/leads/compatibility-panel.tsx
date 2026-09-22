@@ -45,6 +45,11 @@ export function CompatibilityPanel({
 
         {latest && (
           <>
+            {latest.modelUsed === "mock" && (
+              <div className="rounded-md border border-sky-800 bg-sky-950/50 px-3 py-2 text-xs text-sky-300">
+                モック生成結果です（ANTHROPIC_API_KEY未設定）。実際のAI判定ではありません。
+              </div>
+            )}
             {latest.genericWarning && (
               <div className="flex items-start gap-2 rounded-md border border-amber-800 bg-amber-950/50 px-3 py-2 text-sm text-amber-300">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />

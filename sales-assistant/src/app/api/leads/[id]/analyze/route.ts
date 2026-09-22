@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { handleApiError, jsonError } from "@/lib/api-utils";
-import { analyzeLeadCompatibility, DEFAULT_MODEL } from "@/lib/ai-service";
+import { analyzeLeadCompatibility } from "@/lib/ai-service";
 import { logActivity } from "@/lib/activity";
 import type { LeadProfileForAI } from "@/types";
 
@@ -24,7 +24,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
       notes: lead.notes,
     };
 
-    const { result, raw } = await analyzeLeadCompatibility(profile);
+    const { result, raw, modelUsed } = await analyzeLeadCompatibility(profile);
 
     const analysis = await prisma.profileAnalysis.create({
       data: {
@@ -42,7 +42,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
         suggestedInfo: JSON.stringify(result.suggestedInfo),
         genericWarning: result.genericWarning,
         rawResponse: JSON.stringify(raw),
-        modelUsed: DEFAULT_MODEL,
+        modelUsed,
       },
     });
 

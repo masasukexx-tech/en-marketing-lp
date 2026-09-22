@@ -59,12 +59,17 @@ npm run prisma:studio # DBをGUIで確認
 ## 必要な環境変数（`.env`）
 
 ```
-ANTHROPIC_API_KEY=      # 必須。相性判定・文面生成・文面チェックに使用
+ANTHROPIC_API_KEY=      # 任意。未設定の場合はモックモードで動作（下記参照）
 ANTHROPIC_MODEL=claude-sonnet-5   # 任意。既定値のままで可
 DATABASE_URL="file:./dev.db"       # 任意。既定値のままで可（SQLite）
 ```
 
-`ANTHROPIC_API_KEY` が未設定の場合、AI関連のAPIは503エラーで分かりやすく失敗します（登録・一覧・管理系の機能はAPIキーなしでも動作します）。
+### モックモード
+
+`ANTHROPIC_API_KEY` が未設定の場合でも、Claudeを呼び出す代わりに軽量なテンプレートで結果を生成する
+**モックモード**で自動的に動作します。相性判定・つながり申請文/初回DM生成・文面チェックを含む
+一連の画面操作をAPIキーなしで確認できます（画面上部と各結果に「モック生成」であることを明示するバナー/バッジを表示します）。
+実際のAI判定・文面生成を行うには `.env` に `ANTHROPIC_API_KEY` を設定してください。
 
 ## テスト結果
 
@@ -74,8 +79,9 @@ DATABASE_URL="file:./dev.db"       # 任意。既定値のままで可（SQLite�
 そのため、代わりに以下の検証を行っています。
 
 - 外部パッケージに依存しない純粋ロジック（`lib/csv.ts` の CSV パーサー、`lib/status.ts` のステータス/率計算、
-  `lib/stats.ts` のダッシュボード指標計算、`lib/leads.ts` の一覧ソートロジック）について、このマシンにグローバルインストールされている
-  `ts-node` を使い、`tests/*.test.ts` と同内容のアサーションを実データで実行し、**全項目パス**を確認済みです。
+  `lib/stats.ts` のダッシュボード指標計算、`lib/leads.ts` の一覧ソートロジック、`lib/mock-ai.ts` のモック生成ロジック）について、
+  このマシンにグローバルインストールされている `ts-node` を使い、`tests/*.test.ts` と同内容のアサーションを実データで実行し、
+  **全項目パス**を確認済みです。
 - `zod` / `@prisma/client` / React コンポーネント等、外部パッケージに依存するコードは型・構文をコードレビューで確認していますが、
   実際の `tsc --noEmit` ・ `vitest run` ・ `next build` の実行はできていません。
 
