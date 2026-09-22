@@ -7,7 +7,8 @@ import { PRIORITY_STYLE, type Priority } from "@/lib/status";
 import type { LeadDetail } from "@/types";
 import { AlertTriangle, Sparkles } from "lucide-react";
 
-function parseList(json: string): string[] {
+function parseList(json: string | null): string[] {
+  if (!json) return [];
   try {
     const v = JSON.parse(json);
     return Array.isArray(v) ? v : [];

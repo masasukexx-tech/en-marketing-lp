@@ -97,7 +97,11 @@ export async function checkLeadMessage(params: {
     };
   }
 
-  const { system, prompt } = buildMessageCheckPrompt(params);
+  const { system, prompt } = buildMessageCheckPrompt({
+    lead: params.lead,
+    messageType: params.type,
+    content: params.content,
+  });
   const raw = await callClaudeJsonTool({
     system,
     prompt,

@@ -69,13 +69,11 @@ export async function callClaudeJsonTool({
     tool_choice: { type: "tool", name: toolName },
   };
 
-  const response = await anthropic.messages.create(
+  const response = (await anthropic.messages.create(
     requestParams as unknown as Parameters<typeof anthropic.messages.create>[0],
-  );
+  )) as unknown as { content: Array<{ type: string; input?: unknown }> };
 
-  const toolUse = (response.content as Array<{ type: string; input?: unknown }>).find(
-    (block) => block.type === "tool_use",
-  );
+  const toolUse = response.content.find((block) => block.type === "tool_use");
 
   if (!toolUse) {
     throw new Error("Claudeから構造化出力(tool_use)が得られませんでした。");
