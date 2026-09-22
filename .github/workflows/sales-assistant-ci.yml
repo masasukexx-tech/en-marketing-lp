@@ -1,0 +1,99 @@
+name: sales-assistant CI
+
+on:
+  push:
+    branches:
+      - main
+      - claude/determined-rubin-64ccjw
+    paths:
+      - "sales-assistant/**"
+      - ".github/workflows/sales-assistant-ci.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sales-assistant-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: sales-assistant
+
+env:
+  # CI専用の使い捨てPostgreSQL(service container)。実データやシークレットは含まない。
+  DATABASE_URL: "postgresql://ci_user:ci_password@localhost:5432/sales_assistant_ci"
+  # CI用のダミー値。本番のAUTH_SECRET/APP_LOGIN_EMAIL/APP_PASSWORD_HASHとは無関係で、
+  # ビルド・型チェック・テストが認証まわりのコードを問題なく読み込めることの確認にのみ使う。
+  AUTH_SECRET: "ci-only-dummy-secret-do-not-use-in-production"
+  APP_LOGIN_EMAIL: "ci-dummy@example.com"
+  APP_PASSWORD_HASH: "$2a$12$CwTycUXWue0Thq9StjUM0uJ8i6Q4Yl0oCsGyKe3D3tG6RXQGZfN7O"
+
+jobs:
+  build-and-test:
+    name: lint / typecheck / test / build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci_user
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: sales_assistant_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci_user"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        id: install
+        run: |
+          if npm ci; then
+            echo "used=ci" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::npm ci failed (package-lock.json missing or out of sync with package.json); regenerating it with npm install."
+            npm install
+            echo "used=install" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit regenerated package-lock.json
+        if: steps.install.outputs.used == 'install' && github.event_name == 'push'
+        run: |
+          if [ ! -f package-lock.json ]; then
+            echo "::warning::npm install did not produce a package-lock.json; skipping commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore(sales-assistant): sync package-lock.json"
+          git push origin HEAD:"${GITHUB_REF#refs/heads/}" || echo "::warning::Could not push regenerated package-lock.json (will regenerate next run)."
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Apply database migrations (PostgreSQL)
+        run: npx prisma migrate deploy
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
+      - name: Build (production, mock mode — no ANTHROPIC_API_KEY set)
+        run: npm run build
