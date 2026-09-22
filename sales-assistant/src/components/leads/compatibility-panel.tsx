@@ -48,7 +48,7 @@ export function CompatibilityPanel({
           <>
             {latest.modelUsed === "mock" && (
               <div className="rounded-md border border-sky-800 bg-sky-950/50 px-3 py-2 text-xs text-sky-300">
-                モック生成結果です（ANTHROPIC_API_KEY未設定）。実際のAI判定ではありません。
+                モック生成結果です（GEMINI_API_KEY未設定）。実際のAI判定ではありません。
               </div>
             )}
             {latest.genericWarning && (

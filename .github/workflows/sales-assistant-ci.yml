@@ -95,5 +95,5 @@ jobs:
       - name: Test
         run: npm run test
 
-      - name: Build (production, mock mode — no ANTHROPIC_API_KEY set)
+      - name: Build (production, mock mode — no GEMINI_API_KEY set)
         run: npm run build

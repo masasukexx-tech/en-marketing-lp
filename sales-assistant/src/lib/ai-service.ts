@@ -1,4 +1,4 @@
-import { callClaudeJsonTool, DEFAULT_MODEL, isAnthropicConfigured } from "./anthropic";
+import { callAiJsonTool, getAiModelId, isAiConfigured } from "./ai";
 import {
   ANALYSIS_TOOL_NAME,
   ANALYSIS_TOOL_SCHEMA,
@@ -33,12 +33,12 @@ export interface AiCallResult<T> {
 export async function analyzeLeadCompatibility(
   lead: LeadProfileForAI,
 ): Promise<AiCallResult<AnalysisResult>> {
-  if (!isAnthropicConfigured()) {
+  if (!isAiConfigured()) {
     return { result: buildMockAnalysis(lead), raw: null, mocked: true, modelUsed: MOCK_MODEL_LABEL };
   }
 
   const { system, prompt } = buildAnalysisPrompt(lead);
-  const raw = await callClaudeJsonTool({
+  const raw = await callAiJsonTool({
     system,
     prompt,
     toolName: ANALYSIS_TOOL_NAME,
@@ -46,7 +46,7 @@ export async function analyzeLeadCompatibility(
     inputSchema: ANALYSIS_TOOL_SCHEMA as unknown as Record<string, unknown>,
   });
   const result = AnalysisResultSchema.parse(raw);
-  return { result, raw, mocked: false, modelUsed: DEFAULT_MODEL };
+  return { result, raw, mocked: false, modelUsed: getAiModelId() };
 }
 
 export async function generateLeadMessages(params: {
@@ -56,7 +56,7 @@ export async function generateLeadMessages(params: {
 }): Promise<AiCallResult<MessageGenerationResult>> {
   const { lead, type, analysis } = params;
 
-  if (!isAnthropicConfigured()) {
+  if (!isAiConfigured()) {
     return {
       result: buildMockMessages(lead, type),
       raw: null,
@@ -70,7 +70,7 @@ export async function generateLeadMessages(params: {
       ? buildConnectionRequestPrompt(lead, analysis)
       : buildFirstDmPrompt(lead, analysis);
 
-  const raw = await callClaudeJsonTool({
+  const raw = await callAiJsonTool({
     system,
     prompt,
     toolName: MESSAGE_TOOL_NAME,
@@ -79,7 +79,7 @@ export async function generateLeadMessages(params: {
     maxTokens: 3000,
   });
   const result = MessageGenerationResultSchema.parse(raw);
-  return { result, raw, mocked: false, modelUsed: DEFAULT_MODEL };
+  return { result, raw, mocked: false, modelUsed: getAiModelId() };
 }
 
 export async function checkLeadMessage(params: {
@@ -87,7 +87,7 @@ export async function checkLeadMessage(params: {
   type: MessageType;
   content: string;
 }): Promise<AiCallResult<MessageCheckResult>> {
-  if (!isAnthropicConfigured()) {
+  if (!isAiConfigured()) {
     const limit = params.type === "CONNECTION_REQUEST" ? 180 : 350;
     return {
       result: buildMockCheck(params.content, limit),
@@ -102,7 +102,7 @@ export async function checkLeadMessage(params: {
     messageType: params.type,
     content: params.content,
   });
-  const raw = await callClaudeJsonTool({
+  const raw = await callAiJsonTool({
     system,
     prompt,
     toolName: CHECK_TOOL_NAME,
@@ -110,7 +110,7 @@ export async function checkLeadMessage(params: {
     inputSchema: CHECK_TOOL_SCHEMA as unknown as Record<string, unknown>,
   });
   const result = MessageCheckResultSchema.parse(raw);
-  return { result, raw, mocked: false, modelUsed: DEFAULT_MODEL };
+  return { result, raw, mocked: false, modelUsed: getAiModelId() };
 }
 
-export { DEFAULT_MODEL, MOCK_MODEL_LABEL };
+export { MOCK_MODEL_LABEL };
