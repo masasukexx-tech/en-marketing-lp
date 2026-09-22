@@ -2,9 +2,6 @@ name: sales-assistant CI
 
 on:
   push:
-    branches:
-      - main
-      - claude/determined-rubin-64ccjw
     paths:
       - "sales-assistant/**"
       - ".github/workflows/sales-assistant-ci.yml"
