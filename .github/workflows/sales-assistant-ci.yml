@@ -2,9 +2,6 @@ name: sales-assistant CI
 
 on:
   push:
-    branches:
-      - main
-      - claude/determined-rubin-64ccjw
     paths:
       - "sales-assistant/**"
       - ".github/workflows/sales-assistant-ci.yml"
@@ -95,5 +92,5 @@ jobs:
       - name: Test
         run: npm run test
 
-      - name: Build (production, mock mode — no ANTHROPIC_API_KEY set)
+      - name: Build (production, mock mode — no GEMINI_API_KEY set)
         run: npm run build

@@ -1,5 +1,5 @@
-// ANTHROPIC_API_KEY未設定時のモックモード。
-// Claude APIを呼ばず、プロフィール情報を軽くテンプレートに埋め込んだダミー結果を返す。
+// GEMINI_API_KEY未設定時のモックモード。
+// Gemini APIを呼ばず、プロフィール情報を軽くテンプレートに埋め込んだダミー結果を返す。
 // 画面の一連の操作（相性判定→文面生成→文面チェック→ステータス管理）を
 // APIキーなしで確認できるようにするためのもので、実際のAI判定ではない。
 // 呼び出し元は modelUsed:"mock" を保存し、UI側で「モック生成」であることを明示する。
@@ -32,7 +32,7 @@ export function buildMockAnalysis(lead: LeadProfileForAI): AnalysisResult {
     priority: overallScore >= 60 ? "B" : "C",
     reasons: [
       `(モック生成) ${roleHint}という立場から、SNSを活用した集客・採用に関心を持っている可能性があります`,
-      "実際の判定にはANTHROPIC_API_KEYを設定してください",
+      "実際の判定にはGEMINI_API_KEYを設定してください",
     ],
     painPoints: rich
       ? [`${lead.companyName}のSNS運用体制について、詳細は情報からは断定できません`]
@@ -72,8 +72,8 @@ export function buildMockMessages(
     label: t.label,
     content:
       type === "CONNECTION_REQUEST"
-        ? `[モック生成/${t.label}] ${lead.name}様、はじめまして。${lead.companyName}の${lead.title || "ご担当"}として活動されている点に関心を持ちご連絡しました。よろしければ繋がらせてください。（ANTHROPIC_API_KEY未設定のためモック文面です）`
-        : `[モック生成/${t.label}] ${lead.name}様\n\nつながっていただきありがとうございます。${lead.companyName}でのお取り組みに関心を持ちご連絡しました。株式会社ENでSNSを起点とした集客・採用支援を行っております。差し支えなければ現在の取り組み状況を伺えますでしょうか。\n（ANTHROPIC_API_KEY未設定のためモック文面です）`,
+        ? `[モック生成/${t.label}] ${lead.name}様、はじめまして。${lead.companyName}の${lead.title || "ご担当"}として活動されている点に関心を持ちご連絡しました。よろしければ繋がらせてください。（GEMINI_API_KEY未設定のためモック文面です）`
+        : `[モック生成/${t.label}] ${lead.name}様\n\nつながっていただきありがとうございます。${lead.companyName}でのお取り組みに関心を持ちご連絡しました。株式会社ENでSNSを起点とした集客・採用支援を行っております。差し支えなければ現在の取り組み状況を伺えますでしょうか。\n（GEMINI_API_KEY未設定のためモック文面です）`,
   }));
 
   return {
