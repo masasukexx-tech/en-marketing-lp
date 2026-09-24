@@ -36,3 +36,10 @@ export class AiRateLimitError extends Error {
     this.name = "AiRateLimitError";
   }
 }
+
+export class AiTemporaryUnavailableError extends Error {
+  constructor(message = "Geminiが一時的に混雑しています。少し時間を置いて再実行してください") {
+    super(message);
+    this.name = "AiTemporaryUnavailableError";
+  }
+}

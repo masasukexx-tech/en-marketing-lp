@@ -4,13 +4,27 @@ import { handleApiError, jsonError } from "@/lib/api-utils";
 import { analyzeLeadCompatibility } from "@/lib/ai-service";
 import { logActivity } from "@/lib/activity";
 import type { LeadProfileForAI } from "@/types";
+import { getAutoMessageScoreThreshold } from "@/lib/lead-automation";
 
 const CANDIDATE_THRESHOLD = 60;
 
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const lead = await prisma.lead.findUnique({ where: { id: params.id } });
+    const automatic = req.nextUrl.searchParams.get("auto") === "1";
+    const lead = await prisma.lead.findUnique({
+      where: { id: params.id },
+      include: { analyses: { orderBy: { createdAt: "desc" }, take: 1 } },
+    });
     if (!lead) return jsonError("候補者が見つかりません", 404);
+
+    if (automatic && lead.analyses[0]) {
+      return NextResponse.json({
+        lead,
+        analysis: lead.analyses[0],
+        autoMessageThreshold: getAutoMessageScoreThreshold(),
+        reused: true,
+      });
+    }
 
     const profile: LeadProfileForAI = {
       name: lead.name,
@@ -76,7 +90,12 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
       });
     }
 
-    return NextResponse.json({ lead: updated, analysis });
+    return NextResponse.json({
+      lead: updated,
+      analysis,
+      autoMessageThreshold: getAutoMessageScoreThreshold(),
+      reused: false,
+    });
   } catch (error) {
     return handleApiError(error);
   }

@@ -1,13 +1,28 @@
 import { GoogleGenAI } from "@google/genai";
-import { AiNotConfiguredError, AiRateLimitError, type AiJsonToolCall, type AiProvider } from "../provider";
+import {
+  AiNotConfiguredError,
+  AiRateLimitError,
+  AiTemporaryUnavailableError,
+  type AiJsonToolCall,
+  type AiProvider,
+} from "../provider";
 import { toGeminiSchema } from "./gemini-schema";
 
 // 現時点で無料枠が利用できるFlash系モデル。GEMINI_MODEL環境変数で上書き可能。
-export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+export const DEFAULT_GEMINI_MODEL = "gemini-3.6-flash";
 
 function isRateLimitError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);
   return /\b429\b|RESOURCE_EXHAUSTED|rate.?limit|quota/i.test(message);
+}
+
+function isTemporaryUnavailableError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return /\b503\b|UNAVAILABLE|high demand|temporar/i.test(message);
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // Gemini APIからのエラーにプロフィール本文等が含まれることは想定していないが、
@@ -63,18 +78,21 @@ export class GeminiProvider implements AiProvider {
       return JSON.parse(text);
     };
 
-    // 自動リトライは最大1回まで（初回失敗時に1度だけ再試行する）。
-    try {
-      return await attempt();
-    } catch (firstError) {
+    // 429/503のみ2秒・5秒待って再試行する（初回を含め最大3回）。
+    const delays = [0, 2_000, 5_000];
+    let lastError: unknown;
+    for (const delay of delays) {
+      if (delay) await wait(delay);
       try {
         return await attempt();
-      } catch (secondError) {
-        if (isRateLimitError(firstError) || isRateLimitError(secondError)) {
-          throw new AiRateLimitError();
-        }
-        throw toSafeError(secondError);
+      } catch (error) {
+        lastError = error;
+        if (!isRateLimitError(error) && !isTemporaryUnavailableError(error)) break;
       }
     }
+
+    if (isRateLimitError(lastError)) throw new AiRateLimitError();
+    if (isTemporaryUnavailableError(lastError)) throw new AiTemporaryUnavailableError();
+    throw toSafeError(lastError);
   }
 }

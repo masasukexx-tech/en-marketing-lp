@@ -81,7 +81,8 @@ APP_PASSWORD_HASH=        # 上記アカウントのパスワードのbcryptハ�
 
 # ==== 任意 ====
 GEMINI_API_KEY=           # 未設定の場合は相性判定・文面生成がモックモードで動作（https://aistudio.google.com で無料取得可能）
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-3.6-flash
+AUTO_MESSAGE_SCORE_THRESHOLD=80 # この点数以上なら候補者登録後に申請文3案を自動生成
 ```
 
 `APP_PASSWORD_HASH` は平文パスワードではなく、必ずbcryptハッシュ値を設定してください。
@@ -141,6 +142,8 @@ AI呼び出しは `src/lib/ai/provider.ts` の `AiProvider` インターフェ�
    - `APP_LOGIN_EMAIL`（手順2で決めたメールアドレス）
    - `APP_PASSWORD_HASH`（手順2で生成したハッシュ値）
    - `GEMINI_API_KEY`（任意。実際のAI機能を使いたい場合のみ設定。[Google AI Studio](https://aistudio.google.com)で無料取得可能。未設定でもモックモードで画面確認できます）
+   - `GEMINI_MODEL=gemini-3.6-flash`
+   - `AUTO_MESSAGE_SCORE_THRESHOLD=80`（任意。未設定でも80点）
 5. **Deployを実行する**
    - 上記を設定したら「Deploy」ボタンを押してください。
    - ビルド時に `prisma migrate deploy` が自動実行され、手順1で作ったデータベースにテーブルが作成されます（既存データを壊す操作は行われません）。

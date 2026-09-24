@@ -23,7 +23,21 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
-export function LeadDetailClient({ initialLead }: { initialLead: LeadDetail }) {
+const AUTOMATION_MESSAGES: Record<string, string> = {
+  complete: "相性判定が完了し、80点以上だったため、つながり申請文を3案生成しました。",
+  below_threshold: "相性判定が完了しました。80点未満のため、つながり申請文は生成していません。",
+  insufficient: "候補者を登録しました。自動判定にはプロフィール本文または職歴を追加してください。",
+  analysis_failed: "候補者は登録できましたが、自動判定に失敗しました。時間を置いて「再判定する」を押してください。",
+  message_failed: "相性判定は完了しましたが、申請文の自動生成に失敗しました。「メッセージ生成」から再実行できます。",
+};
+
+export function LeadDetailClient({
+  initialLead,
+  automationResult,
+}: {
+  initialLead: LeadDetail;
+  automationResult?: string;
+}) {
   const [lead, setLead] = useState(initialLead);
   const [analyzing, setAnalyzing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -130,6 +144,12 @@ export function LeadDetailClient({ initialLead }: { initialLead: LeadDetail }) {
   return (
     <div className="space-y-6">
       <LeadHeader lead={lead} />
+
+      {automationResult && AUTOMATION_MESSAGES[automationResult] && (
+        <p className="rounded-md border border-en-orange/40 bg-orange-950/30 px-3 py-2 text-sm text-orange-200">
+          {AUTOMATION_MESSAGES[automationResult]}
+        </p>
+      )}
 
       {error && (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">

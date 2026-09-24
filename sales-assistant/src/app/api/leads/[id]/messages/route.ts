@@ -9,17 +9,31 @@ import type { AnalysisSummaryForAI, LeadProfileForAI } from "@/types";
 
 const BodySchema = z.object({
   type: z.enum(MESSAGE_TYPES),
+  automatic: z.boolean().optional().default(false),
 });
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { type } = BodySchema.parse(await req.json());
+    const { type, automatic } = BodySchema.parse(await req.json());
 
     const lead = await prisma.lead.findUnique({
       where: { id: params.id },
-      include: { analyses: { orderBy: { createdAt: "desc" }, take: 1 } },
+      include: {
+        analyses: { orderBy: { createdAt: "desc" }, take: 1 },
+        messages: { where: { type: "CONNECTION_REQUEST" }, orderBy: { createdAt: "desc" }, take: 3 },
+      },
     });
     if (!lead) return jsonError("候補者が見つかりません", 404);
+
+    if (automatic && type === "CONNECTION_REQUEST" && lead.messages.length === 3) {
+      return NextResponse.json({
+        drafts: lead.messages,
+        missingInfo: [],
+        suggestedInfo: [],
+        genericWarning: false,
+        reused: true,
+      });
+    }
 
     const profile: LeadProfileForAI = {
       name: lead.name,
@@ -47,7 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     const { result, modelUsed } = await generateLeadMessages({ lead: profile, type, analysis: analysisSummary });
 
-    const drafts = [];
+    const draftsData = [];
     let anyAutoRevised = false;
 
     for (const variant of result.variants) {
@@ -68,20 +82,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         checkPayload = { skipped: true, reason: "チェック処理に失敗しました" };
       }
 
-      const draft = await prisma.messageDraft.create({
-        data: {
-          leadId: lead.id,
-          type,
-          variant: variant.variant,
-          label: variant.label,
-          content: finalContent,
-          profileSnapshot: JSON.stringify(profile),
-          checkResult: JSON.stringify(checkPayload),
-          modelUsed,
-        },
+      draftsData.push({
+        leadId: lead.id,
+        type,
+        variant: variant.variant,
+        label: variant.label,
+        content: finalContent,
+        profileSnapshot: JSON.stringify(profile),
+        checkResult: JSON.stringify(checkPayload),
+        modelUsed,
       });
-      drafts.push(draft);
     }
+
+    const drafts = await prisma.$transaction(
+      draftsData.map((data) => prisma.messageDraft.create({ data })),
+    );
 
     await logActivity({
       leadId: lead.id,
@@ -94,6 +109,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       missingInfo: result.missingInfo,
       suggestedInfo: result.suggestedInfo,
       genericWarning: result.genericWarning,
+      reused: false,
     });
   } catch (error) {
     return handleApiError(error);

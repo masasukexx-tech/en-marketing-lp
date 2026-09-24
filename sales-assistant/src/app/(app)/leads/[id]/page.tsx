@@ -4,7 +4,13 @@ import { LeadDetailClient } from "@/components/leads/lead-detail-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function LeadDetailPage({ params }: { params: { id: string } }) {
+export default async function LeadDetailPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams: { automation?: string };
+}) {
   const lead = await prisma.lead.findUnique({
     where: { id: params.id },
     include: {
@@ -18,5 +24,5 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
 
   if (!lead) notFound();
 
-  return <LeadDetailClient initialLead={lead} />;
+  return <LeadDetailClient initialLead={lead} automationResult={searchParams.automation} />;
 }

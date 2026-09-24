@@ -4,6 +4,7 @@ import type { AiJsonToolCall, AiProvider } from "./provider";
 export {
   AiNotConfiguredError,
   AiRateLimitError,
+  AiTemporaryUnavailableError,
   type AiJsonToolCall,
   type AiProvider,
 } from "./provider";
