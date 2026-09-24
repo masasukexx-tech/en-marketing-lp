@@ -4,6 +4,7 @@ import { LeadInputSchema } from "@/lib/schemas";
 import { handleApiError } from "@/lib/api-utils";
 import { logActivity } from "@/lib/activity";
 import { listLeads, parseLeadListParams } from "@/lib/leads";
+import { hasEnoughProfileForAutoAnalysis } from "@/lib/lead-automation";
 
 export async function GET(req: NextRequest) {
   try {
@@ -46,7 +47,26 @@ export async function POST(req: NextRequest) {
 
     await logActivity({ leadId: lead.id, type: "STATUS_CHANGE", toStatus: "CANDIDATE" });
 
-    return NextResponse.json({ lead }, { status: 201 });
+    const autoAnalysisEligible = hasEnoughProfileForAutoAnalysis({
+      name: lead.name,
+      companyName: lead.companyName,
+      title: lead.title,
+      profileText: lead.profileText,
+      workHistory: lead.workHistory,
+    });
+
+    return NextResponse.json(
+      {
+        lead,
+        automation: {
+          eligible: autoAnalysisEligible,
+          reason: autoAnalysisEligible
+            ? null
+            : "自動判定にはプロフィール本文または職歴の入力が必要です。候補者は登録済みです。",
+        },
+      },
+      { status: 201 },
+    );
   } catch (error) {
     return handleApiError(error);
   }

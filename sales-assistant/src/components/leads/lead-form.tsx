@@ -40,6 +40,7 @@ export function LeadForm() {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(EMPTY);
   const [submitting, setSubmitting] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const update = (key: keyof FormState) => (
@@ -50,6 +51,7 @@ export function LeadForm() {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
+    setProgress("候補者を登録しています...");
     try {
       const res = await fetch("/api/leads", {
         method: "POST",
@@ -60,11 +62,41 @@ export function LeadForm() {
       if (!res.ok) {
         throw new Error(data.error || "登録に失敗しました");
       }
-      router.push(`/leads/${data.lead.id}`);
+      const leadId = data.lead.id as string;
+      if (!data.automation?.eligible) {
+        router.push(`/leads/${leadId}?automation=insufficient`);
+        return;
+      }
+
+      setProgress("相性を自動判定しています...");
+      const analysisRes = await fetch(`/api/leads/${leadId}/analyze?auto=1`, { method: "POST" });
+      const analysisData = await analysisRes.json();
+      if (!analysisRes.ok) {
+        router.push(`/leads/${leadId}?automation=analysis_failed`);
+        return;
+      }
+
+      if (analysisData.analysis.overallScore >= analysisData.autoMessageThreshold) {
+        setProgress("80点以上のため、つながり申請文を自動生成しています...");
+        const messageRes = await fetch(`/api/leads/${leadId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "CONNECTION_REQUEST", automatic: true }),
+        });
+        if (!messageRes.ok) {
+          router.push(`/leads/${leadId}?automation=message_failed`);
+          return;
+        }
+        router.push(`/leads/${leadId}?automation=complete`);
+        return;
+      }
+
+      router.push(`/leads/${leadId}?automation=below_threshold`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "登録に失敗しました");
     } finally {
       setSubmitting(false);
+      setProgress(null);
     }
   }
 
@@ -134,9 +166,15 @@ export function LeadForm() {
             </p>
           )}
 
+          {progress && !error && (
+            <p className="rounded-md border border-en-orange/40 bg-orange-950/30 px-3 py-2 text-sm text-orange-200">
+              {progress} 画面を閉じずにお待ちください。
+            </p>
+          )}
+
           <div className="flex justify-end gap-2">
             <Button type="submit" disabled={submitting}>
-              {submitting ? "登録中..." : "候補者として登録"}
+              {submitting ? "自動処理中..." : "登録して自動判定"}
             </Button>
           </div>
         </form>
